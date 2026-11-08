@@ -12,9 +12,9 @@
   --muted: #687280;
   --line: #e1e4e8;
   --line-strong: #cdd2d8;
-  --accent: #7a1d2c;
+  --accent: #15181c;
   --accent-ink: #ffffff;
-  --accent-soft: #f6e9eb;
+  --accent-soft: #e9ebee;
   --gold: #8f6410;
   --gold-soft: #f5eddb;
   --info: #2c5786;
@@ -32,14 +32,14 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #0b0c0e; --surface: #141619; --sunk: #1b1e22; --ink: #eceef1; --muted: #8b94a0; --line: #24282e; --line-strong: #333941;
-    --accent: #e3899a; --accent-ink: #2a0a11; --accent-soft: #2b1519; --gold: #d8a64c; --gold-soft: #282010;
+    --accent: #eceef1; --accent-ink: #0b0c0e; --accent-soft: #24282e; --gold: #d8a64c; --gold-soft: #282010;
     --info: #8db4e3; --info-soft: #142030; --ok: #63c08f; --ok-soft: #10251a; --late: #ef8479; --late-soft: #2d1411;
     --scrim: rgba(0, 0, 0, .6); color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #0b0c0e; --surface: #141619; --sunk: #1b1e22; --ink: #eceef1; --muted: #8b94a0; --line: #24282e; --line-strong: #333941;
-  --accent: #e3899a; --accent-ink: #2a0a11; --accent-soft: #2b1519; --gold: #d8a64c; --gold-soft: #282010;
+  --accent: #eceef1; --accent-ink: #0b0c0e; --accent-soft: #24282e; --gold: #d8a64c; --gold-soft: #282010;
   --info: #8db4e3; --info-soft: #142030; --ok: #63c08f; --ok-soft: #10251a; --late: #ef8479; --late-soft: #2d1411;
   --scrim: rgba(0, 0, 0, .6); color-scheme: dark;
 }
@@ -66,9 +66,10 @@ header.top {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding-block: 16px 12px; border-bottom: 1px solid var(--line); margin-bottom: 14px;
 }
-.brand { display: flex; align-items: baseline; gap: 10px; }
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand .mark { width: 34px; height: 34px; border-radius: 8px; background: #ffffff; border: 1px solid var(--line); object-fit: contain; padding: 1px; flex: none; }
 .brand b { font: 700 19px/1 var(--f-ui); letter-spacing: .32em; }
-.brand span { font: 500 11px var(--f-mono); text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
+.brand span { white-space: nowrap; font: 500 11px var(--f-mono); text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
 .sync { font: 500 11px var(--f-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
 .sync i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); display: inline-block; }
 .sync.on i { background: var(--ok); box-shadow: 0 0 0 3px var(--ok-soft); }
@@ -206,6 +207,7 @@ a.btn { color: var(--ink); }
 
 /* Empty */
 .empty { text-align: center; color: var(--muted); padding: 44px 12px; }
+.empty .logo-big { width: 160px; height: 160px; border-radius: 16px; border: 1px solid var(--line); background: #ffffff; margin-bottom: 14px; }
 .empty h3 { font: 600 17px var(--f-ui); letter-spacing: -.015em; color: var(--ink); margin: 0 0 6px; }
 
 /* Forms */
@@ -305,12 +307,13 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
   .toast { animation: up .18s ease-out; }
   @keyframes up { from { opacity: 0; transform: translate(-50%, 8px); } }
 }
+@media (max-width: 420px) { .brand span { display: none; } }
 @media (max-width: 360px) { .two { grid-template-columns: 1fr; } .step { font-size: 11px; } }
 </style>
 
 <div class="wrap">
   <header class="top">
-    <div class="brand"><b>SOMA</b><span>Pre-order desk</span></div>
+    <div class="brand"><img class="mark" src="assets/soma-mark.png" alt="" width="34" height="34"><b>SOMA</b><span>Pre-order desk</span></div>
     <div class="sync" id="sync"><i></i><span>Connecting…</span></div>
   </header>
   <div id="banner"></div>
@@ -533,7 +536,7 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
 
     let body;
     if (!orders.length) {
-      body = `<div class="empty"><h3>No orders yet</h3><p>Orders you take on TikTok show up here, grouped by day.</p><p><a class="btn primary" href="#add" style="text-decoration:none;display:inline-block">Add the first order</a></p></div>`;
+      body = `<div class="empty"><img class="logo-big" src="assets/soma-logo.jpg" alt="SOMA" width="160" height="160"><h3>No orders yet</h3><p>Orders you take on TikTok show up here, grouped by day.</p><p><a class="btn primary" href="#add" style="text-decoration:none;display:inline-block">Add the first order</a></p></div>`;
     } else if (!list.length) {
       body = `<div class="empty"><h3>Nothing here</h3><p>No orders match this filter.</p></div>`;
     } else {

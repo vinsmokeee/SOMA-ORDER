@@ -2,7 +2,7 @@
 
 A phone-friendly tracker for SOMA's TikTok pre-orders: customer pays → ordered online (Shein, Lazada…) → parcel arrives from Bangkok → delivered.
 
-The whole app is one file, `index.html`. It runs as a Claude artifact. That keeps orders in an online database, so any phone signed in to the same claude.ai account sees the same orders. Opened anywhere else (a downloaded copy, another host), it falls back to saving on that phone only and shows a banner saying so.
+The whole app is `index.html` plus the SOMA logo in `assets/` (`soma-mark.png` for the header, `soma-logo.jpg` for the empty screen). It runs as a Claude artifact. That keeps orders in an online database, so any phone signed in to the same claude.ai account sees the same orders. Opened anywhere else (a downloaded copy, another host), it falls back to saving on that phone only and shows a banner saying so.
 
 ## Screens
 
