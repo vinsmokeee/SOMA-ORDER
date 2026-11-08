@@ -215,6 +215,19 @@ section.rep h2 { font: 700 17px var(--f-display); margin: 0 0 8px; }
 .rate-box .money-in input { width: 80px; }
 .rate-box .meta { flex-basis: 100%; }
 
+/* Shein cart sheet */
+.cart-list { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.cart-row { display: grid; grid-template-columns: 22px 1fr auto; gap: 6px 10px; align-items: center; padding: 10px 12px; border-top: 1px solid var(--line); }
+.cart-row:first-child { border-top: 0; }
+.cart-row input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--accent); margin: 0; }
+.cart-who { min-width: 0; overflow-wrap: anywhere; font-size: 14px; }
+.cart-who small { display: block; color: var(--muted); }
+.money-in.sm input { width: 64px; }
+.cart-out { grid-column: 2 / -1; font-size: 13px; color: var(--muted); }
+.cart-out:empty { display: none; }
+.cart-out .pos { color: var(--ok); font-weight: 700; } .cart-out .neg { color: var(--late); font-weight: 700; }
+.btn:disabled { opacity: .5; cursor: default; }
+
 /* Saved confirmation */
 .saved { display: flex; flex-direction: column; align-items: stretch; gap: 14px; padding-top: 18px; }
 .saved .view-title { margin: 0; text-align: center; }
@@ -470,7 +483,7 @@ section.rep h2 { font: 700 17px var(--f-display); margin: 0 0 8px; }
         const unpaidCount = allDay.filter((o) => o.status === "paid").length;
         const total = allDay.reduce((s, o) => s + (Number(o.price) || 0), 0);
         const action = unpaidCount
-          ? `<button class="btn-day" data-act="dayorder" data-day="${d}">Mark ${unpaidCount} ordered 💵</button>`
+          ? `<button class="btn-day" data-act="dayorder" data-day="${d}">Place Shein order 💵</button>`
           : `<span class="day-done">All ordered on Shein</span>`;
         return `<section class="day"><div class="day-head"><h2>${esc(fmtDay(d))}<small class="num">${allDay.length} · ${nu(total)}</small></h2>${action}</div>
           <div class="list">${items.map(card).join("")}</div></section>`;
@@ -529,6 +542,7 @@ section.rep h2 { font: 700 17px var(--f-display); margin: 0 0 8px; }
         ${profit === null ? `<span class="meta">Add later</span>` : `<span class="profit num ${profit < 0 ? "neg" : "pos"}">Profit ${signedNu(profit)}</span>`}
       </div>
       ${hasCost(o) ? `<div class="meta num">${hasBaht(o) ? `${baht(o.costBaht)} × ${fmtRate(o.rate)} = ` : "Cost "}${nu(o.cost)} · sold for ${nu(o.price)}</div>` : ""}
+      ${o.sheinOrder ? `<div class="meta num">Shein cart${o.sheinOrder.no ? " #" + esc(o.sheinOrder.no) : ""} placed ${shortDay(o.sheinOrder.placedAt)}: ${o.sheinOrder.totalBaht != null ? baht(o.sheinOrder.totalBaht) + " for " : ""}${o.sheinOrder.count} item${o.sheinOrder.count === 1 ? "" : "s"}</div>` : ""}
       <div class="row">
         <button class="btn small" data-act="delivery" data-id="${o.id}">Change delivery</button>
         <button class="btn small" data-act="edit" data-id="${o.id}">Edit order</button>
@@ -562,11 +576,7 @@ section.rep h2 { font: 700 17px var(--f-display); margin: 0 0 8px; }
       if (o.status === b.dataset.s) return;
       saveOrder(setStatus(o, b.dataset.s)).catch(() => {});
     }
-    else if (act === "dayorder") {
-      const list = orders.filter((x) => x.date === b.dataset.day && x.status === "paid");
-      list.forEach((x) => saveOrder(setStatus(x, "ordered")).catch(() => {}));
-      toast(`${list.length} order${list.length === 1 ? "" : "s"} marked as ordered on Shein`);
-    }
+    else if (act === "dayorder") cartSheet(b.dataset.day);
     else if (act === "copy" && o) copyLabel(o);
     else if (act === "delivery" && o) deliverySheet(o);
     else if (act === "edit" && o) { ui.editId = o.id; location.hash = "add"; render(); }
@@ -658,6 +668,87 @@ section.rep h2 { font: 700 17px var(--f-display); margin: 0 0 8px; }
     });
     const r = $("#dl-reset");
     if (r) r.addEventListener("click", () => { closeSheet(); saveOrder({ ...o, delivery: null }).then(() => toast("Back to original details")).catch(() => {}); });
+  }
+
+  // ---------- Shein cart: several orders checked out together ----------
+  // Split the cart total across orders: by Shein item price when every ticked order has one,
+  // otherwise by what each customer paid.
+  function splitCart(rows, total) {
+    const byItem = rows.length && rows.every((r) => r.itemBaht > 0);
+    const weights = rows.map((r) => (byItem ? r.itemBaht : Number(r.o.price) || 0));
+    const sum = weights.reduce((s, w) => s + w, 0);
+    const shares = rows.map((r, i) => (sum > 0 ? (total * weights[i]) / sum : total / rows.length));
+    const rounded = shares.map((s) => Math.round(s * 100) / 100);
+    if (rounded.length) rounded[rounded.length - 1] = Math.round((total - rounded.slice(0, -1).reduce((s, x) => s + x, 0)) * 100) / 100;
+    return { byItem, shares: rounded };
+  }
+
+  function cartSheet(day) {
+    const waiting = orders.filter((x) => x.status === "paid")
+      .sort((a, b) => (b.date === day) - (a.date === day) || String(b.date).localeCompare(String(a.date)) || String(a.createdAt).localeCompare(String(b.createdAt)));
+    const row = (o) => `<div class="cart-row">
+        <input type="checkbox" id="ck-${o.id}" data-id="${o.id}" ${o.date === day ? "checked" : ""}>
+        <label for="ck-${o.id}" class="cart-who"><b>@${esc(handle(o.tiktok))}</b> ${esc(o.item)}<small class="num">${o.date === day ? "" : esc(shortDay(o.date)) + " · "}sold ${nu(o.price)}</small></label>
+        <div class="money-in sm"><span>฿</span><input id="ib-${o.id}" class="num" type="number" inputmode="decimal" min="0" step="any" placeholder="item" aria-label="Shein item price in Baht for @${esc(handle(o.tiktok))}"></div>
+        <div class="cart-out num" id="out-${o.id}"></div>
+      </div>`;
+    openSheet(`<h3>Place Shein order</h3>
+      <p class="sub">Tick the orders in this Shein cart and enter the total you paid. The app splits it across them.</p>
+      <form id="cart-form" class="stack">
+        <div class="cart-list">${waiting.map(row).join("")}</div>
+        <div class="two">
+          <div class="field"><label for="cart-total">Total paid on Shein (฿)</label><input id="cart-total" class="num" type="number" inputmode="decimal" min="0" step="any" placeholder="e.g. 500"></div>
+          <div class="field"><label for="cart-no">Shein order no.</label><input id="cart-no" placeholder="optional" autocapitalize="none"></div>
+        </div>
+        <p class="hint" id="cart-note"></p>
+        <div class="row"><button class="btn primary" type="submit" id="cart-go" style="flex:1;padding:12px">Mark ordered</button><button class="btn" type="button" data-act="close">Cancel</button></div>
+      </form>`);
+
+    const readRows = () => waiting.filter((o) => $("#ck-" + o.id).checked)
+      .map((o) => ({ o, itemBaht: Number($("#ib-" + o.id).value) || 0 }));
+    const update = () => {
+      const rows = readRows();
+      const total = readBaht($("#cart-total").value);
+      const r = rate();
+      waiting.forEach((o) => { $("#out-" + o.id).textContent = ""; });
+      let note;
+      if (!rows.length) note = "Tick at least one order.";
+      else if (total === null) note = `Leave the total empty to add costs later. Rate ฿1 = Nu. ${fmtRate(r)}.`;
+      else if (total === undefined) note = "Enter the total as a number, like 500.";
+      else {
+        const { byItem, shares } = splitCart(rows, total);
+        rows.forEach((x, i) => {
+          const c = toNu(shares[i], r), p = Number(x.o.price) - c;
+          $("#out-" + x.o.id).innerHTML = `${baht(shares[i])} = ${nu(c)} · <span class="${p < 0 ? "neg" : "pos"}">profit ${signedNu(p)}</span>`;
+        });
+        note = byItem ? `Split by the item prices you entered. Rate ฿1 = Nu. ${fmtRate(r)}.`
+          : `Split by what each customer paid. Enter every item's Shein price to split by those instead. Rate ฿1 = Nu. ${fmtRate(r)}.`;
+      }
+      $("#cart-note").textContent = note;
+      $("#cart-go").textContent = rows.length ? `Mark ${rows.length} ordered 💵` : "Mark ordered";
+      $("#cart-go").disabled = !rows.length;
+    };
+    $("#cart-form").addEventListener("input", update);
+    update();
+
+    $("#cart-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const rows = readRows();
+      const total = readBaht($("#cart-total").value);
+      if (!rows.length) return;
+      if (total === undefined) return toast("Enter the total as a number, like 500", true);
+      const r = rate();
+      const no = $("#cart-no").value.trim();
+      const sheinOrder = { id: "c" + Date.now().toString(36), no: no || null, totalBaht: total, count: rows.length, placedAt: today() };
+      const shares = total === null ? null : splitCart(rows, total).shares;
+      closeSheet();
+      rows.forEach((x, i) => {
+        const n = { ...setStatus(x.o, "ordered"), sheinOrder };
+        if (shares) Object.assign(n, costFields(shares[i], r));
+        saveOrder(n).catch(() => {});
+      });
+      toast(`${rows.length} order${rows.length === 1 ? "" : "s"} marked as ordered on Shein`);
+    });
   }
 
   // ---------- add / edit form ----------

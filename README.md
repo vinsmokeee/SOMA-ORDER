@@ -8,7 +8,7 @@ The whole app is one file, `index.html`. It runs as a Claude artifact. That keep
 
 - **Orders**: grouped by order date, newest day first. Filters: Active, To order, Late, No cost, All, plus search.
   - Tap a step (Paid, Ordered 💵, Arrived, Delivered) to set an order's status. Going back clears the later dates.
-  - **Mark N ordered 💵** on a day header moves all of that day's Paid orders to Ordered.
+  - **Place Shein order 💵** on a day header opens the cart step. Tick the orders that went into one Shein checkout (that day's are ticked; older unordered ones can be added), enter the total paid in Baht and, optionally, the Shein order number. The total is split across the ticked orders by Shein item price when every one has an item price entered, otherwise by what each customer paid. The ticked orders move to Ordered with their cost filled in.
   - Ordered parcels show "Day N of 8–10". Once more than 10 days have passed since ordering, they show **Late**.
   - Tap an order to open it: **Copy** (name, phone, address and item for the package), **Change delivery**, Shein cost, **Edit order**, **Delete**.
 - **Add**: TikTok username, name, number, address, item, price (Nu.), date (defaults to today), optional Shein cost in Baht. Returning customers get a one-tap "Fill details". Saving shows an "Order saved" screen with **Add another order** and **See orders**.
@@ -31,6 +31,7 @@ One document per order in the `orders` collection:
 | `date` | order date `YYYY-MM-DD` (grouping key) |
 | `status` | `paid` / `ordered` / `arrived` / `delivered` |
 | `orderedAt`, `arrivedAt`, `deliveredAt` | `YYYY-MM-DD` when each step was reached |
+| `sheinOrder` | `{id, no, totalBaht, count, placedAt}` for the Shein checkout the order went in, or absent |
 | `createdAt` | ISO timestamp |
 
 The rate lives in `settings/main` as `{rate}`.
