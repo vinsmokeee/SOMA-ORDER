@@ -1,0 +1,1187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f4f5f6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="SOMA">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="assets/icon-192.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>SOMA Pre-orders</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a single operator column; hairline-ruled header, day ledgers of order cards, fixed tab bar. */
+:root {
+  --bg: #f4f5f6;
+  --surface: #ffffff;
+  --sunk: #eef0f2;
+  --ink: #101317;
+  --muted: #687280;
+  --line: #e1e4e8;
+  --line-strong: #cdd2d8;
+  --accent: #15181c;
+  --accent-ink: #ffffff;
+  --accent-soft: #e9ebee;
+  --gold: #8f6410;
+  --gold-soft: #f5eddb;
+  --info: #2c5786;
+  --info-soft: #e5edf6;
+  --ok: #1d7448;
+  --ok-soft: #e1f0e7;
+  --late: #b42318;
+  --late-soft: #fce7e4;
+  --scrim: rgba(16, 19, 23, .5);
+  --f-ui: "Geist", "Helvetica Neue", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --r: 8px;
+  --tabbar: 62px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b0c0e; --surface: #141619; --sunk: #1b1e22; --ink: #eceef1; --muted: #8b94a0; --line: #24282e; --line-strong: #333941;
+    --accent: #eceef1; --accent-ink: #0b0c0e; --accent-soft: #24282e; --gold: #d8a64c; --gold-soft: #282010;
+    --info: #8db4e3; --info-soft: #142030; --ok: #63c08f; --ok-soft: #10251a; --late: #ef8479; --late-soft: #2d1411;
+    --scrim: rgba(0, 0, 0, .6); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0b0c0e; --surface: #141619; --sunk: #1b1e22; --ink: #eceef1; --muted: #8b94a0; --line: #24282e; --line-strong: #333941;
+  --accent: #eceef1; --accent-ink: #0b0c0e; --accent-soft: #24282e; --gold: #d8a64c; --gold-soft: #282010;
+  --info: #8db4e3; --info-soft: #142030; --ok: #63c08f; --ok-soft: #10251a; --late: #ef8479; --late-soft: #2d1411;
+  --scrim: rgba(0, 0, 0, .6); color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font: 400 15px/1.45 var(--f-ui); letter-spacing: -.005em;
+  -webkit-font-smoothing: antialiased;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 calc(var(--tabbar) + 24px + env(safe-area-inset-bottom, 0px));
+  -webkit-tap-highlight-color: transparent;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap { max-width: 580px; margin: 0 auto; }
+button, input, textarea, select { font: inherit; color: inherit; letter-spacing: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.lbl-caps { font: 500 11px var(--f-mono); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+
+/* Header */
+header.top {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg);
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding-block: 16px 12px; border-bottom: 1px solid var(--line); margin-bottom: 14px;
+}
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand .mark { width: 34px; height: 34px; border-radius: 8px; background: #ffffff; border: 1px solid var(--line); object-fit: contain; padding: 1px; flex: none; }
+.brand b { font: 700 19px/1 var(--f-ui); letter-spacing: .32em; }
+.brand span { white-space: nowrap; font: 500 11px var(--f-mono); text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
+.sync { font: 500 11px var(--f-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.sync i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); display: inline-block; }
+.sync.on i { background: var(--ok); box-shadow: 0 0 0 3px var(--ok-soft); }
+.sync.local i { background: var(--gold); box-shadow: 0 0 0 3px var(--gold-soft); }
+.banner { border: 1px solid var(--line); background: var(--surface); border-radius: var(--r); padding: 10px 12px; font-size: 13px; color: var(--muted); margin-bottom: 14px; }
+
+/* Tab bar */
+nav.tabs {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--surface); border-top: 1px solid var(--line);
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+nav.tabs a {
+  height: var(--tabbar); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  color: var(--muted); text-decoration: none; font: 500 11px var(--f-ui); letter-spacing: .02em;
+}
+nav.tabs a svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+nav.tabs a[aria-current="page"] { color: var(--ink); }
+nav.tabs a.add-tab span.plus {
+  width: 36px; height: 26px; border-radius: 6px; background: var(--accent); color: var(--accent-ink);
+  display: flex; align-items: center; justify-content: center;
+}
+nav.tabs a.add-tab span.plus svg { width: 16px; height: 16px; stroke-width: 2.2; }
+
+/* Filters */
+.toolbar { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+.chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip {
+  border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 6px 10px;
+  font-size: 13px; font-weight: 500; white-space: nowrap; color: var(--muted);
+}
+.chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.chip .n { font-family: var(--f-mono); font-size: 11px; opacity: .7; margin-left: 6px; }
+.search { width: 100%; border: 1px solid var(--line); background: var(--surface); border-radius: var(--r); padding: 10px 12px; font-size: 15px; }
+.search::placeholder { color: var(--muted); }
+
+/* Day ledgers */
+.day { margin-bottom: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
+.day.open { background: transparent; border-color: transparent; margin-bottom: 20px; }
+.day-head { display: flex; align-items: center; justify-content: space-between; gap: 8px 10px; flex-wrap: wrap; padding: 12px 12px 12px 8px; }
+.day.open .day-head { padding: 0 0 10px; border-bottom: 1px solid var(--line); margin-bottom: 10px; }
+.day-toggle { display: flex; align-items: flex-start; gap: 8px; background: none; border: 0; padding: 0; text-align: left; flex: 1 1 200px; min-width: 0; }
+.day-toggle:disabled { cursor: default; }
+.day-toggle:disabled .chev { display: none; }
+.chev { width: 16px; height: 16px; margin-top: 1px; flex: none; fill: none; stroke: var(--muted); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+@media (prefers-reduced-motion: no-preference) { .chev { transition: transform .15s; } }
+.day.open .chev { transform: rotate(90deg); }
+.day-txt { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.day-head h2 { font: 600 16px/1.2 var(--f-ui); letter-spacing: -.015em; margin: 0; display: flex; align-items: center; gap: 8px; }
+.day-head h2 em { font: 500 10px var(--f-mono); font-style: normal; text-transform: uppercase; letter-spacing: .12em; color: var(--accent); }
+.day-sum { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.ds { font: 500 10px var(--f-mono); text-transform: uppercase; letter-spacing: .06em; padding: 2px 6px; border-radius: 4px; }
+.ds.wait { background: var(--sunk); color: var(--ink); }
+.ds.info { background: var(--gold-soft); color: var(--gold); }
+.ds.late { background: var(--late-soft); color: var(--late); }
+.ds.go { background: var(--info-soft); color: var(--info); }
+.ds.ok { background: var(--ok-soft); color: var(--ok); }
+.btn-day {
+  border: 1px solid var(--ink); background: var(--ink); color: var(--bg); font-weight: 500; font-size: 13px;
+  padding: 7px 12px; border-radius: 6px; white-space: nowrap;
+}
+.list { display: flex; flex-direction: column; gap: 8px; }
+
+/* Order card */
+.order { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.order.is-late { border-color: var(--late); }
+.o-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px 0 12px; }
+.uname {
+  display: inline-flex; align-items: center; gap: 1px; min-width: 0; max-width: 100%;
+  background: transparent; border: 1px solid var(--line); border-radius: 6px; padding: 5px 5px 5px 9px; font-weight: 600; font-size: 15px; letter-spacing: -.01em;
+}
+.uname:hover { border-color: var(--line-strong); }
+.uname:active { border-color: var(--accent); }
+.u-at { color: var(--muted); font-weight: 400; }
+.u-name { min-width: 0; overflow-wrap: anywhere; text-align: left; }
+.u-copy { display: inline-flex; align-items: center; gap: 4px; margin-left: 10px; padding: 3px 7px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); font: 500 11px var(--f-mono); text-transform: uppercase; letter-spacing: .06em; flex: none; }
+.u-copy svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.uname.copied { border-color: var(--ok); }
+.uname.copied .u-copy { background: var(--ok-soft); color: var(--ok); }
+.o-main { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; width: 100%; text-align: left; background: none; border: 0; padding: 8px 14px 12px; }
+.o-who { font-weight: 500; min-width: 0; overflow-wrap: anywhere; grid-column: 1; grid-row: 1; }
+.o-main .o-tags { grid-column: 2; grid-row: 1; }
+.o-main .o-item { grid-column: 1 / -1; grid-row: 2; }
+.o-price { font: 500 15px var(--f-mono); font-variant-numeric: tabular-nums; letter-spacing: -.02em; text-align: right; white-space: nowrap; }
+.o-item { color: var(--muted); font-size: 14px; min-width: 0; overflow-wrap: anywhere; }
+.o-tags { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; align-items: center; }
+.tag { font: 500 10px var(--f-mono); text-transform: uppercase; letter-spacing: .06em; padding: 2px 6px; border-radius: 4px; white-space: nowrap; }
+.tag.late, .tag.loss { background: var(--late-soft); color: var(--late); }
+.tag.wait { background: var(--gold-soft); color: var(--gold); }
+.tag.moved { background: var(--info-soft); color: var(--info); }
+
+.steps { display: grid; grid-template-columns: repeat(4, 1fr); margin: 0 12px 12px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.step {
+  border: 0; border-left: 1px solid var(--line); background: var(--surface); color: var(--muted); padding: 8px 2px; font-size: 12px; font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.step:first-child { border-left: 0; }
+.step.done { color: var(--ink); background: var(--sunk); }
+.s-paid .step.cur { background: var(--ink); color: var(--bg); }
+.s-ordered .step.done { background: var(--gold-soft); color: var(--gold); }
+.s-ordered .step.cur { background: var(--gold); color: var(--surface); }
+.s-arrived .step.done { background: var(--info-soft); color: var(--info); }
+.s-arrived .step.cur { background: var(--info); color: var(--surface); }
+.s-delivered .step.done { background: var(--ok-soft); color: var(--ok); }
+.s-delivered .step.cur { background: var(--ok); color: var(--surface); }
+
+.o-detail { border-top: 1px solid var(--line); padding: 14px; display: flex; flex-direction: column; gap: 12px; background: var(--bg); }
+.ship { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px; display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: start; }
+.ship p { margin: 0; min-width: 0; overflow-wrap: anywhere; white-space: pre-line; }
+.ship .lbl { display: block; font: 500 10px var(--f-mono); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 4px; }
+.orig { font-size: 13px; color: var(--muted); }
+.orig s { text-decoration-color: var(--muted); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.btn {
+  border: 1px solid var(--line-strong); background: var(--surface); border-radius: 6px; padding: 8px 12px; font-weight: 500; font-size: 14px;
+}
+a.btn { color: var(--ink); }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.danger { color: var(--late); }
+.btn.danger.arm { background: var(--late); border-color: var(--late); color: var(--surface); }
+.btn.small { padding: 6px 10px; font-size: 13px; }
+.btn:disabled { opacity: .45; cursor: default; }
+.cost-row { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; }
+.cost-row label { font-weight: 500; font-size: 14px; }
+.money-in { display: flex; align-items: center; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); overflow: hidden; }
+.money-in span { padding: 0 6px 0 10px; color: var(--muted); font: 400 13px var(--f-mono); white-space: nowrap; }
+.money-in input { border: 0; background: transparent; padding: 8px 10px 8px 0; width: 110px; outline: none; font-family: var(--f-mono); }
+.money-in:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.profit { font: 500 13px var(--f-mono); }
+.profit.pos { color: var(--ok); } .profit.neg { color: var(--late); }
+.meta { font-size: 12px; color: var(--muted); }
+
+/* Empty */
+.empty { text-align: center; color: var(--muted); padding: 44px 12px; }
+.login { display: flex; flex-direction: column; gap: 6px; padding-top: 10px; max-width: 380px; margin: 0 auto; }
+.login .logo-big { width: 140px; height: 140px; border-radius: 16px; border: 1px solid var(--line); background: #ffffff; align-self: center; margin-bottom: 8px; }
+.login .view-title { text-align: center; }
+.login .hint { font-size: 12px; color: var(--muted); margin: 0; text-align: center; }
+#li-err { color: var(--late); min-height: 1em; margin: 0; }
+body.signed-out nav.tabs { display: none; }
+.note.account { margin-top: 8px; }
+.empty .logo-big { width: 160px; height: 160px; border-radius: 16px; border: 1px solid var(--line); background: #ffffff; margin-bottom: 14px; }
+.empty h3 { font: 600 17px var(--f-ui); letter-spacing: -.015em; color: var(--ink); margin: 0 0 6px; }
+
+/* Forms */
+h1.view-title { font: 600 24px/1.15 var(--f-ui); letter-spacing: -.03em; margin: 4px 0 16px; text-wrap: balance; }
+form.stack { display: flex; flex-direction: column; gap: 14px; }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field label { font: 500 11px var(--f-mono); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.field input, .field textarea {
+  border: 1px solid var(--line-strong); background: var(--surface); border-radius: 6px; padding: 11px 12px; width: 100%; font-size: 16px;
+}
+.field input:focus, .field textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.field input.num { font-family: var(--f-mono); }
+.field textarea { resize: vertical; min-height: 74px; }
+.field .hint { font-size: 12px; color: var(--muted); }
+.field .hint.num { font-size: 12px; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.at { position: relative; }
+.at::before { content: "@"; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.at input { padding-left: 28px; }
+.suggest { border: 1px solid var(--info-soft); background: var(--info-soft); color: var(--ink); border-radius: var(--r); padding: 10px 12px; font-size: 14px; display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.edit-note { border: 1px solid var(--line); background: var(--surface); border-radius: var(--r); padding: 10px 12px; font-size: 14px; color: var(--muted); }
+
+/* Report */
+.periods { margin-bottom: 14px; }
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; margin-bottom: 10px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.tile { background: var(--surface); padding: 14px; min-width: 0; }
+.tile .k { font: 500 10px var(--f-mono); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.tile .v { font: 500 22px/1.2 var(--f-mono); font-variant-numeric: tabular-nums; letter-spacing: -.03em; margin-top: 6px; overflow-wrap: anywhere; }
+.tile.wide .v { font-size: 28px; }
+.tile .v.pos { color: var(--ok); } .tile .v.neg { color: var(--late); }
+.tile .meta { margin-top: 2px; }
+.tile.wide { grid-column: 1 / -1; }
+.note { font-size: 13px; color: var(--muted); margin: 0 0 24px; }
+.note button { border: 0; background: none; color: var(--accent); font-weight: 500; padding: 0; text-decoration: underline; text-underline-offset: 2px; }
+section.rep { margin-bottom: 24px; }
+section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: 0 0 8px; }
+.tbl { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.tr { display: grid; grid-template-columns: 24px 1fr auto auto; gap: 10px; padding: 10px 12px; align-items: center; border-top: 1px solid var(--line); }
+.tr:first-child { border-top: 0; }
+.tr .rk { font: 500 13px var(--f-mono); color: var(--muted); }
+.tr .nm { min-width: 0; overflow-wrap: anywhere; font-weight: 500; }
+.tr .nm small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+.tr .c { color: var(--muted); font-size: 12px; text-align: right; }
+.tr .t { font-weight: 500; text-align: right; }
+.lose { grid-template-columns: 1fr auto; }
+.pipe { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.pipe div { padding: 12px 8px; text-align: center; background: var(--surface); }
+.pipe b { display: block; font: 500 20px var(--f-mono); letter-spacing: -.03em; }
+.pipe span { font-size: 11px; color: var(--muted); }
+.rate-box { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px; margin-bottom: 14px; }
+.rate-box label { font: 500 11px var(--f-mono); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.rate-box .money-in input { width: 80px; }
+.rate-box .meta { flex-basis: 100%; }
+
+/* Online cart sheet */
+.cart-list { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
+.cart-row { display: grid; grid-template-columns: 20px 1fr auto; gap: 6px 10px; align-items: center; padding: 10px 12px; border-top: 1px solid var(--line); }
+.cart-row:first-child { border-top: 0; }
+.cart-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); margin: 0; }
+.cart-who { min-width: 0; overflow-wrap: anywhere; font-size: 14px; }
+.cart-who b { font-weight: 600; }
+.cart-who small { display: block; color: var(--muted); font-size: 12px; }
+.money-in.sm input { width: 64px; }
+.cart-out { grid-column: 2 / -1; font: 400 12px var(--f-mono); color: var(--muted); }
+.cart-out:empty { display: none; }
+.cart-out .pos { color: var(--ok); } .cart-out .neg { color: var(--late); }
+
+/* Saved confirmation */
+.saved { display: flex; flex-direction: column; align-items: stretch; gap: 14px; padding-top: 18px; }
+.saved .view-title { margin: 0; text-align: center; }
+.tick { width: 48px; height: 48px; border-radius: 50%; border: 1px solid var(--ok); color: var(--ok); display: flex; align-items: center; justify-content: center; align-self: center; }
+.tick svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.saved-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: flex; flex-direction: column; gap: 4px; }
+.saved-card .o-who { font-weight: 600; }
+.saved-card .o-who span { color: var(--muted); font-weight: 400; }
+.saved-row { display: flex; justify-content: space-between; gap: 10px; color: var(--muted); margin-top: 6px; font-size: 13px; }
+.saved-row b { color: var(--ink); font: 500 16px var(--f-mono); }
+.saved-actions { display: flex; flex-direction: column; gap: 8px; }
+.saved-actions .btn { padding: 13px; text-align: center; text-decoration: none; font-size: 15px; }
+
+/* Sheet + toast */
+.scrim { position: fixed; inset: 0; background: var(--scrim); z-index: 20; display: flex; align-items: flex-end; justify-content: center; }
+.sheet {
+  background: var(--bg); width: 100%; max-width: 580px; border-radius: 12px 12px 0 0; max-height: 92%; overflow-y: auto; border-top: 1px solid var(--line);
+  padding: 20px max(16px, env(safe-area-inset-right, 0px)) calc(20px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+}
+.sheet h3 { font: 600 19px var(--f-ui); letter-spacing: -.02em; margin: 0 0 4px; }
+.sheet p.sub { color: var(--muted); margin: 0 0 16px; font-size: 14px; }
+.sheet textarea.copy { width: 100%; min-height: 130px; border: 1px solid var(--line-strong); border-radius: 6px; padding: 10px; background: var(--surface); font: 400 14px var(--f-mono); }
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--tabbar) + 14px + env(safe-area-inset-bottom, 0px));
+  background: var(--ink); color: var(--bg); padding: 10px 14px; border-radius: 6px; font-weight: 500; font-size: 13px; z-index: 30;
+  max-width: calc(100% - 32px); text-align: center;
+}
+.toast.err { background: var(--late); color: var(--surface); }
+@media (prefers-reduced-motion: no-preference) {
+  .toast { animation: up .18s ease-out; }
+  @keyframes up { from { opacity: 0; transform: translate(-50%, 8px); } }
+}
+@media (max-width: 420px) { .brand span { display: none; } }
+@media (max-width: 360px) { .two { grid-template-columns: 1fr; } .step { font-size: 11px; } }
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js"));</script>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><img class="mark" src="assets/soma-mark.png" alt="" width="34" height="34"><b>SOMA</b><span>Pre-order desk</span></div>
+    <div class="sync" id="sync"><i></i><span>Connecting…</span></div>
+  </header>
+  <div id="banner"></div>
+  <main id="view"></main>
+</div>
+
+<nav class="tabs" aria-label="Main">
+  <a href="#orders" data-tab="orders">
+    <svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Orders
+  </a>
+  <a href="#add" data-tab="add" class="add-tab">
+    <span class="plus"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span>Add
+  </a>
+  <a href="#report" data-tab="report">
+    <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Report
+  </a>
+</nav>
+<div id="layer"></div>
+
+<script>
+(() => {
+  "use strict";
+  const LATE_DAYS = 10;
+  const STEPS = [["paid", "Paid"], ["ordered", "Ordered 💵"], ["arrived", "Arrived"], ["delivered", "Delivered"]];
+  const STEP_IDX = Object.fromEntries(STEPS.map(([k], i) => [k, i]));
+
+  // ---------- state ----------
+  const DEFAULT_RATE = 2.85; // Nu. per 1 Baht; the shop sets its own rate on the Report screen
+  let orders = [];
+  let settings = { rate: DEFAULT_RATE };
+  let loaded = false;
+  let store = null;
+  const ui = { filter: "active", q: "", open: new Set(), period: "month", editId: null, armDelete: null, saved: null, days: {} };
+  // Days the viewer opened or closed by hand (remembered on this phone only)
+  try { ui.days = JSON.parse(localStorage.getItem("soma-days-v1") || "{}") || {}; } catch {}
+  const saveDays = () => { try { localStorage.setItem("soma-days-v1", JSON.stringify(ui.days)); } catch {} };
+
+  // ---------- helpers ----------
+  const $ = (s, r = document) => r.querySelector(s);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const nu = (n) => "Nu. " + Math.round(Number(n) || 0).toLocaleString("en-IN");
+  const signedNu = (n) => (n < 0 ? "−" : "") + nu(Math.abs(n));
+  const pad = (n) => String(n).padStart(2, "0");
+  const today = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+  const dayNum = (s) => { const [y, m, d] = s.split("-").map(Number); return Date.UTC(y, m - 1, d) / 864e5; };
+  const daysSince = (s) => (s ? dayNum(today()) - dayNum(s) : 0);
+  const fmtDay = (s) => {
+    const diff = daysSince(s);
+    const [y, m, d] = s.split("-").map(Number);
+    const dt = new Date(y, m - 1, d);
+    const label = dt.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+    if (diff === 0) return "Today · " + label;
+    if (diff === 1) return "Yesterday · " + label;
+    return label + (y !== new Date().getFullYear() ? " " + y : "");
+  };
+  const dayTitle = (s) => {
+    const [y, m, d] = s.split("-").map(Number);
+    const mon = new Date(y, m - 1, d).toLocaleDateString("en-GB", { month: "short" });
+    return `Orders of ${pad(d)} ${mon}${y !== new Date().getFullYear() ? " " + y : ""}`;
+  };
+  const dayHint = (s) => { const n = daysSince(s); return n === 0 ? "Today" : n === 1 ? "Yesterday" : ""; };
+  const shortDay = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-GB", { day: "numeric", month: "short" }); };
+  const handle = (t) => String(t || "").trim().replace(/^@+/, "");
+  const ship = (o) => o.delivery || { name: o.name, phone: o.phone, address: o.address };
+  const hasCost = (o) => o.cost !== null && o.cost !== undefined && o.cost !== "";
+  const isLate = (o) => o.status === "ordered" && daysSince(o.orderedAt) > LATE_DAYS;
+  const rate = () => Number(settings.rate) > 0 ? Number(settings.rate) : DEFAULT_RATE;
+  const fmtRate = (r) => Number(r).toLocaleString("en-IN", { maximumFractionDigits: 4 });
+  const baht = (n) => "฿" + Number(n).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+  const toNu = (b, r) => Math.round(Number(b) * Number(r));
+  const hasBaht = (o) => o.costBaht !== null && o.costBaht !== undefined && o.costBaht !== "";
+  // Parse a Baht cost field: "" -> null, bad -> undefined
+  const readBaht = (v) => { v = String(v).trim(); if (v === "") return null; const n = Number(v); return isFinite(n) && n >= 0 ? n : undefined; };
+  // Cost fields for an order from a Baht amount, locked to the rate in force when entered
+  const costFields = (b, r) => b === null ? { costBaht: null, rate: null, cost: null } : { costBaht: b, rate: r, cost: toNu(b, r) };
+
+  let toastTimer;
+  function toast(msg, err) {
+    const el = document.createElement("div");
+    el.className = "toast" + (err ? " err" : "");
+    el.textContent = msg;
+    document.querySelectorAll(".toast").forEach((t) => t.remove());
+    document.body.appendChild(el);
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.remove(), 2600);
+  }
+
+  // ---------- storage ----------
+  const queues = new Map(); // one write at a time per order
+  function enqueue(id, fn) {
+    const prev = queues.get(id) || Promise.resolve();
+    const next = prev.catch(() => {}).then(fn);
+    queues.set(id, next);
+    return next;
+  }
+  function saveOrder(o) {
+    const i = orders.findIndex((x) => x.id === o.id);
+    if (i >= 0) orders[i] = o; else orders.push(o);
+    render();
+    return enqueue(o.id, () => store.save(o)).catch((e) => {
+      toast(e && e.code === "quota_exceeded" ? "Storage is full. Delete old delivered orders." : "Could not save. Check your connection and try again.", true);
+      throw e;
+    });
+  }
+  function removeOrder(id) {
+    orders = orders.filter((o) => o.id !== id);
+    render();
+    return enqueue(id, () => store.remove(id)).catch(() => toast("Could not delete. Try again.", true));
+  }
+
+  function localStore() {
+    const KEY = "soma-orders-v1";
+    const SKEY = "soma-settings-v1";
+    try { orders = JSON.parse(localStorage.getItem(KEY) || "[]"); } catch { orders = []; }
+    try { settings = { ...settings, ...JSON.parse(localStorage.getItem(SKEY) || "{}") }; } catch {}
+    const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(orders)); } catch {} return Promise.resolve(); };
+    const saveSettings = () => { try { localStorage.setItem(SKEY, JSON.stringify(settings)); } catch {} return Promise.resolve(); };
+    return { mode: "local", newId: () => "o" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7), save: persist, remove: persist, saveSettings };
+  }
+
+  function setSync(mode, text) {
+    const el = $("#sync");
+    el.className = "sync " + mode;
+    el.querySelector("span").textContent = text;
+  }
+
+  // ---------- Firebase (standalone website, works offline) ----------
+  let fbStarted = false;
+  function initFirebase() {
+    if (!window.firebase) {
+      setSync("", "Not loaded");
+      $("#view").innerHTML = `<div class="empty"><h3>Couldn't load SOMA</h3><p>Connect to the internet and open SOMA again. After the first time it also opens offline.</p></div>`;
+      return;
+    }
+    firebase.initializeApp(window.SOMA_FIREBASE);
+    const fdb = firebase.firestore();
+    fdb.enablePersistence({ synchronizeTabs: true }).catch(() => {});
+    const auth = firebase.auth();
+    setSync("", "Connecting…");
+    auth.onAuthStateChanged((u) => {
+      ui.user = u ? { email: u.email } : null;
+      if (!u) { ui.needLogin = true; document.body.classList.add("signed-out"); setSync("", "Signed out"); render(); return; }
+      ui.needLogin = false; document.body.classList.remove("signed-out");
+      if (!fbStarted) { fbStarted = true; startFirestore(fdb); }
+      render();
+    });
+    ui.signIn = (email, pass) => auth.signInWithEmailAndPassword(email, pass);
+    ui.signOut = () => auth.signOut().then(() => location.reload());
+  }
+
+  function startFirestore(fdb) {
+    const col = fdb.collection("orders");
+    const fail = (e) => toast(e && e.code === "permission-denied"
+      ? "This account isn't allowed to change SOMA orders." : "Could not save. Try again.", true);
+    // Firestore applies writes on the phone at once and sends them when online, so never wait for the server
+    const clean = (d) => JSON.parse(JSON.stringify(d));
+    store = {
+      mode: "firebase",
+      newId: () => col.doc().id,
+      save: (o) => { const { id, ...data } = o; col.doc(id).set(clean(data)).catch(fail); return Promise.resolve(); },
+      remove: (id) => { col.doc(id).delete().catch(fail); return Promise.resolve(); },
+      saveSettings: () => { fdb.doc("settings/main").set(clean(settings)).catch(fail); return Promise.resolve(); },
+    };
+    fdb.doc("settings/main").onSnapshot((snap) => {
+      if (snap.exists) { settings = { ...settings, ...snap.data() }; render(); }
+    }, () => {});
+    col.onSnapshot({ includeMetadataChanges: true }, (snap) => {
+      orders = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      loaded = true;
+      const pending = snap.metadata.hasPendingWrites, offline = snap.metadata.fromCache;
+      if (pending) setSync("local", offline ? "Offline · saved on phone" : "Syncing…");
+      else if (offline) setSync("local", "Offline");
+      else setSync("on", "Saved online");
+      render();
+    }, (e) => {
+      setSync("", "Error");
+      $("#view").innerHTML = `<div class="empty"><h3>${e.code === "permission-denied" ? "This account can't open SOMA orders" : "Couldn't load orders"}</h3><p>${e.code === "permission-denied" ? "Sign in with the SOMA account, or ask the owner to add this one." : "Close SOMA and open it again."}</p><p><button class="btn" id="out-btn">Sign out</button></p></div>`;
+      $("#out-btn").addEventListener("click", () => ui.signOut());
+    });
+  }
+
+  function renderLogin() {
+    if ($("#login-form")) return;
+    $("#view").innerHTML = `
+      <div class="login">
+        <img class="logo-big" src="assets/soma-logo.jpg" alt="SOMA" width="140" height="140">
+        <h1 class="view-title">Sign in</h1>
+        <form class="stack" id="login-form">
+          <div class="field"><label for="li-email">Email</label><input id="li-email" type="email" autocomplete="username" autocapitalize="none" required></div>
+          <div class="field"><label for="li-pass">Password</label><input id="li-pass" type="password" autocomplete="current-password" required></div>
+          <p class="hint" id="li-err" role="alert"></p>
+          <button class="btn primary" type="submit" style="padding:12px">Sign in</button>
+          <p class="hint">You stay signed in on this phone. The first sign-in needs internet.</p>
+        </form>
+      </div>`;
+    $("#login-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const btn = e.target.querySelector("button[type=submit]");
+      btn.disabled = true; $("#li-err").textContent = "";
+      ui.signIn($("#li-email").value.trim(), $("#li-pass").value).catch((err) => {
+        btn.disabled = false;
+        const c = err && err.code;
+        $("#li-err").textContent =
+          c === "auth/network-request-failed" ? "No internet. Connect and try again."
+          : c === "auth/too-many-requests" ? "Too many tries. Wait a few minutes and try again."
+          : "Email or password is wrong.";
+      });
+    });
+  }
+
+  async function initStore() {
+    let db = null;
+    const inClaude = !!(window.claude && window.claude.use);
+    if (!inClaude && window.SOMA_FIREBASE && window.SOMA_FIREBASE.apiKey) return initFirebase();
+    try { db = inClaude ? await window.claude.use("db") : null; } catch { db = null; }
+    if (!db) {
+      store = localStore();
+      loaded = true;
+      setSync("local", "This phone only");
+      $("#banner").innerHTML = `<div class="banner">Orders are saved on this phone only. Open the shared SOMA link while signed in to keep them online for every phone.</div>`;
+      render();
+      return;
+    }
+    const col = db.collection("orders");
+    store = {
+      mode: "online",
+      newId: () => col.doc().id,
+      save: (o) => { const { id, ...data } = o; return col.doc(id).set(data); },
+      remove: (id) => col.doc(id).delete(),
+      saveSettings: () => db.doc("settings/main").set({ ...settings }),
+    };
+    db.doc("settings/main").onSnapshot((snap) => {
+      if (snap.exists) { settings = { ...settings, ...snap.data() }; render(); }
+    }, () => {});
+    const slow = setTimeout(() => { if (!loaded) setSync("", "Still connecting…"); }, 10000);
+    col.onSnapshot(
+      (snap) => {
+        clearTimeout(slow);
+        orders = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        loaded = true;
+        setSync("on", snap.metadata.fromCache ? "Syncing…" : "Saved online");
+        render();
+      },
+      (e) => {
+        clearTimeout(slow);
+        setSync("", e.code === "revoked" ? "Read only" : "Offline");
+        if (e.code !== "revoked") toast("Lost connection to saved orders. Reopen the page.", true);
+      }
+    );
+  }
+
+  // ---------- routing ----------
+  const route = () => { const h = location.hash.slice(1); return ["orders", "add", "report"].includes(h) ? h : "orders"; };
+  window.addEventListener("hashchange", () => { if (route() !== "add") { ui.editId = null; ui.saved = null; } render(); window.scrollTo(0, 0); });
+
+  function render() {
+    if (ui.needLogin) return renderLogin();
+    const r = route();
+    document.querySelectorAll("nav.tabs a").forEach((a) => { if (a.dataset.tab === r) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+    if (r === "add") {
+      if (ui.saved) { if (!$("#saved-view")) renderSaved(); return; }
+      if (!$("#order-form") || $("#order-form").dataset.edit !== String(ui.editId || "")) renderForm();
+      return;
+    }
+    if (r === "report") { if (!$("#rate-in") || document.activeElement !== $("#rate-in")) renderReport(); return; }
+    renderOrders();
+  }
+
+  // ---------- orders view ----------
+  function filtered() {
+    const q = ui.q.trim().toLowerCase().replace(/^@/, "");
+    return orders.filter((o) => {
+      if (ui.filter === "active" && o.status === "delivered") return false;
+      if (ui.filter === "late" && !isLate(o)) return false;
+      if (ui.filter === "topay" && o.status !== "paid") return false;
+      if (ui.filter === "waiting" && o.status !== "ordered") return false;
+      if (ui.filter === "deliver" && o.status !== "arrived") return false;
+      if (ui.filter === "nocost" && hasCost(o)) return false;
+      if (q) {
+        const s = ship(o);
+        const hay = [o.tiktok, o.name, o.phone, o.item, s.name, s.phone].join(" ").toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }
+
+  function renderOrders() {
+    const view = $("#view");
+    if (!loaded) { view.innerHTML = `<div class="empty"><h3>Loading orders…</h3><p>Your saved orders will appear here, grouped by day.</p></div>`; return; }
+    const counts = {
+      active: orders.filter((o) => o.status !== "delivered").length,
+      topay: orders.filter((o) => o.status === "paid").length,
+      waiting: orders.filter((o) => o.status === "ordered").length,
+      deliver: orders.filter((o) => o.status === "arrived").length,
+      late: orders.filter(isLate).length,
+      nocost: orders.filter((o) => !hasCost(o)).length,
+      all: orders.length,
+    };
+    const chips = [["active", "Active"], ["topay", "To order"], ["waiting", "Not arrived"], ["late", "Late"], ["deliver", "To deliver"], ["nocost", "No cost"], ["all", "All"]]
+      .map(([k, l]) => `<button class="chip" data-act="filter" data-f="${k}" aria-pressed="${ui.filter === k}">${l}<span class="n num">${counts[k]}</span></button>`).join("");
+
+    const list = filtered();
+    const byDay = new Map();
+    list.forEach((o) => { if (!byDay.has(o.date)) byDay.set(o.date, []); byDay.get(o.date).push(o); });
+    const days = [...byDay.keys()].sort().reverse();
+
+    let body;
+    if (!orders.length) {
+      body = `<div class="empty"><img class="logo-big" src="assets/soma-logo.jpg" alt="SOMA" width="160" height="160"><h3>No orders yet</h3><p>Orders you take on TikTok show up here, grouped by day.</p><p><a class="btn primary" href="#add" style="text-decoration:none;display:inline-block">Add the first order</a></p></div>`;
+    } else if (!list.length) {
+      body = `<div class="empty"><h3>Nothing here</h3><p>No orders match this filter.</p></div>`;
+    } else {
+      // Filters and search open every day so matches are never hidden
+      const forceOpen = ui.q.trim() !== "" || !["active", "all"].includes(ui.filter);
+      body = days.map((d) => {
+        const items = byDay.get(d).sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+        const allDay = orders.filter((o) => o.date === d);
+        const toOrder = allDay.filter((o) => o.status === "paid").length;
+        const late = allDay.filter(isLate).length;
+        const waiting = allDay.filter((o) => o.status === "ordered").length - late;
+        const toDeliver = allDay.filter((o) => o.status === "arrived").length;
+        const delivered = allDay.filter((o) => o.status === "delivered").length;
+        const total = allDay.reduce((s, o) => s + (Number(o.price) || 0), 0);
+        const open = forceOpen || (ui.days[d] ?? daysSince(d) === 0);
+        const status = [
+          toOrder ? `<span class="ds wait">${toOrder} to order</span>` : "",
+          waiting ? `<span class="ds info">${waiting} not arrived</span>` : "",
+          late ? `<span class="ds late">${late} late</span>` : "",
+          toDeliver ? `<span class="ds go">${toDeliver} to deliver</span>` : "",
+          delivered === allDay.length ? `<span class="ds ok">All delivered</span>` : "",
+        ].join("");
+        const hint = dayHint(d);
+        const action = toOrder ? `<button class="btn-day" data-act="dayorder" data-day="${d}">Place order 💵</button>` : "";
+        return `<section class="day ${open ? "open" : ""}"><div class="day-head">
+            <button class="day-toggle" data-act="day" data-day="${d}" aria-expanded="${open}" ${forceOpen ? "disabled" : ""}>
+              <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+              <span class="day-txt"><h2>${esc(dayTitle(d))}${hint ? `<em>${hint}</em>` : ""}</h2>
+              <span class="day-sum num">${allDay.length} order${allDay.length === 1 ? "" : "s"} · ${nu(total)}${status}</span></span>
+            </button>${action}</div>
+          ${open ? `<div class="list">${items.map(card).join("")}</div>` : ""}</section>`;
+      }).join("");
+    }
+    const searchVal = ui.q;
+    view.innerHTML = `<div class="toolbar"><div class="chips">${chips}</div>
+      <input class="search" id="search" type="search" placeholder="Search username, name, phone or item" value="${esc(searchVal)}"></div>${body}`;
+  }
+
+  function statusTag(o) {
+    if (isLate(o)) return `<span class="tag late">Late · ${daysSince(o.orderedAt)} days</span>`;
+    if (o.status === "ordered") return `<span class="tag wait num">Day ${daysSince(o.orderedAt)} of 8–10</span>`;
+    return "";
+  }
+
+  function card(o) {
+    const open = ui.open.has(o.id);
+    const idx = STEP_IDX[o.status] ?? 0;
+    const steps = STEPS.map(([k, l], i) => `<button class="step ${i < idx ? "done" : ""} ${i === idx ? "cur done" : ""}" data-act="step" data-id="${o.id}" data-s="${k}" aria-pressed="${i === idx}">${l}</button>`).join("");
+    const loss = hasCost(o) && Number(o.cost) > Number(o.price);
+    const tags = [statusTag(o), o.delivery ? `<span class="tag moved">New address</span>` : "", loss ? `<span class="tag loss">Loss</span>` : ""].join("");
+    return `<article class="order s-${o.status} ${isLate(o) ? "is-late" : ""}">
+      <div class="o-top">
+        <button class="uname" data-act="copyuser" data-id="${o.id}" aria-label="Copy TikTok username ${esc(handle(o.tiktok))}">
+          <span class="u-at">@</span><span class="u-name">${esc(handle(o.tiktok))}</span>
+          <span class="u-copy"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span class="u-lbl">Copy</span></span>
+        </button>
+        <span class="o-price num">${nu(o.price)}</span>
+      </div>
+      <button class="o-main" data-act="toggle" data-id="${o.id}" aria-expanded="${open}">
+        <span class="o-who">${esc(ship(o).name)}</span>
+        <span class="o-item">${esc(o.item)}</span>
+        <span class="o-tags">${tags}</span>
+      </button>
+      <div class="steps">${steps}</div>
+      ${open ? detail(o) : ""}
+    </article>`;
+  }
+
+  function detail(o) {
+    const s = ship(o);
+    const orig = o.delivery
+      ? `<div class="orig">Original: <s>${esc(o.name)}, ${esc(o.phone)}, ${esc(o.address)}</s></div>` : "";
+    const profit = hasCost(o) ? Number(o.price) - Number(o.cost) : null;
+    const dates = [
+      `Taken ${shortDay(o.date)}`,
+      o.orderedAt ? `ordered ${shortDay(o.orderedAt)}` : "",
+      o.arrivedAt ? `arrived ${shortDay(o.arrivedAt)}` : "",
+      o.deliveredAt ? `delivered ${shortDay(o.deliveredAt)}` : "",
+    ].filter(Boolean).join(" · ");
+    const armed = ui.armDelete === o.id;
+    return `<div class="o-detail">
+      <div class="ship">
+        <p><span class="lbl">Deliver to</span>${esc(s.name)}\n${esc(s.phone)}\n${esc(s.address)}</p>
+        <button class="btn small primary" data-act="copy" data-id="${o.id}">Copy</button>
+      </div>
+      ${orig}
+      <div class="cost-row">
+        <label for="cost-${o.id}">Buying cost</label>
+        <div class="money-in"><span>฿</span><input id="cost-${o.id}" class="num" type="number" inputmode="decimal" min="0" step="any" data-act="cost" data-id="${o.id}" value="${hasBaht(o) ? esc(o.costBaht) : ""}" placeholder="0"></div>
+        ${profit === null ? `<span class="meta">Add later</span>` : `<span class="profit num ${profit < 0 ? "neg" : "pos"}">Profit ${signedNu(profit)}</span>`}
+      </div>
+      ${hasCost(o) ? `<div class="meta num">${hasBaht(o) ? `${baht(o.costBaht)} × ${fmtRate(o.rate)} = ` : "Cost "}${nu(o.cost)} · sold for ${nu(o.price)}</div>` : ""}
+      ${o.sheinOrder ? `<div class="meta num">Cart${o.sheinOrder.no ? " #" + esc(o.sheinOrder.no) : ""} placed ${shortDay(o.sheinOrder.placedAt)}: ${o.sheinOrder.totalBaht != null ? baht(o.sheinOrder.totalBaht) + " for " : ""}${o.sheinOrder.count} item${o.sheinOrder.count === 1 ? "" : "s"}</div>` : ""}
+      <div class="row">
+        <button class="btn small" data-act="delivery" data-id="${o.id}">Change delivery</button>
+        <button class="btn small" data-act="edit" data-id="${o.id}">Edit order</button>
+        <button class="btn small danger ${armed ? "arm" : ""}" data-act="delete" data-id="${o.id}">${armed ? "Tap again to delete" : "Delete"}</button>
+      </div>
+      <div class="meta">${esc(dates)} · contact ${esc(o.phone)}</div>
+    </div>`;
+  }
+
+  function setStatus(o, s) {
+    const n = { ...o, status: s };
+    const t = today();
+    const idx = STEP_IDX[s];
+    n.orderedAt = idx >= 1 ? o.orderedAt || t : null;
+    n.arrivedAt = idx >= 2 ? o.arrivedAt || t : null;
+    n.deliveredAt = idx >= 3 ? o.deliveredAt || t : null;
+    return n;
+  }
+
+  // ---------- events ----------
+  document.addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-act]");
+    if (!b || b.tagName === "INPUT") return;
+    const act = b.dataset.act;
+    const o = orders.find((x) => x.id === b.dataset.id);
+    if (act !== "delete") ui.armDelete = null;
+
+    if (act === "filter") { ui.filter = b.dataset.f; render(); }
+    else if (act === "toggle" && o) { ui.open.has(o.id) ? ui.open.delete(o.id) : ui.open.add(o.id); render(); }
+    else if (act === "step" && o) {
+      if (o.status === b.dataset.s) return;
+      saveOrder(setStatus(o, b.dataset.s)).catch(() => {});
+    }
+    else if (act === "dayorder") cartSheet(b.dataset.day);
+    else if (act === "day") {
+      const d = b.dataset.day;
+      ui.days[d] = !(ui.days[d] ?? daysSince(d) === 0);
+      saveDays(); render();
+    }
+    else if (act === "copy" && o) copyLabel(o);
+    else if (act === "copyuser" && o) {
+      const name = handle(o.tiktok);
+      const done = () => {
+        toast(`Copied ${name}. Paste it in TikTok search.`);
+        b.classList.add("copied"); b.querySelector(".u-lbl").textContent = "Copied";
+        setTimeout(() => { b.classList.remove("copied"); const l = b.querySelector(".u-lbl"); if (l) l.textContent = "Copy"; }, 1800);
+      };
+      copyText(name, "Copy username", done);
+    }
+    else if (act === "delivery" && o) deliverySheet(o);
+    else if (act === "edit" && o) { ui.editId = o.id; location.hash = "add"; render(); }
+    else if (act === "delete" && o) {
+      if (ui.armDelete === o.id) { ui.armDelete = null; ui.open.delete(o.id); removeOrder(o.id); toast("Order deleted"); }
+      else { ui.armDelete = o.id; render(); setTimeout(() => { if (ui.armDelete === o.id) { ui.armDelete = null; render(); } }, 3500); }
+    }
+    else if (act === "period") { ui.period = b.dataset.p; render(); }
+    else if (act === "show-nocost") { ui.filter = "nocost"; location.hash = "orders"; }
+    else if (act === "close") closeSheet();
+  });
+
+  document.addEventListener("input", (e) => {
+    if (e.target.id === "search") {
+      ui.q = e.target.value;
+      const pos = e.target.selectionStart;
+      renderOrders();
+      const s = $("#search"); s.focus(); try { s.setSelectionRange(pos, pos); } catch {}
+    }
+  });
+
+  document.addEventListener("change", (e) => {
+    const el = e.target;
+    if (el.dataset.act === "cost") {
+      const o = orders.find((x) => x.id === el.dataset.id);
+      if (!o) return;
+      const v = readBaht(el.value);
+      if (v === undefined) { toast("Enter the buying cost in Baht, like 70", true); return; }
+      if ((o.costBaht ?? null) === v && (v !== null || !hasCost(o))) return;
+      const f = costFields(v, rate());
+      saveOrder({ ...o, ...f }).then(() => toast(v === null ? "Cost cleared" : `Cost saved: ${baht(v)} = ${nu(f.cost)}`)).catch(() => {});
+    }
+    if (el.id === "rate-in") {
+      const r = Number(el.value);
+      if (!isFinite(r) || r <= 0) { toast("Enter the rate as a number, like 2.85", true); return; }
+      if (r === rate()) return;
+      settings = { ...settings, rate: r };
+      store.saveSettings().then(() => toast(`Rate saved: ฿1 = Nu. ${fmtRate(r)}`)).catch(() => toast("Could not save the rate. Try again.", true));
+      renderReport();
+    }
+  });
+
+  // ---------- copy ----------
+  function labelText(o) {
+    const s = ship(o);
+    return `Name: ${s.name}\nPhone: ${s.phone}\nAddress: ${s.address}\nItem: ${o.item}`;
+  }
+  // Copy text; if this phone blocks copying, show it selected so it can be copied by hand
+  function copyText(text, title, onDone) {
+    const fallback = () => {
+      openSheet(`<h3>${esc(title)}</h3><p class="sub">Select the text below and copy it.</p>
+        <textarea class="copy" id="copy-text" readonly>${esc(text)}</textarea>
+        <div class="row" style="margin-top:12px"><button class="btn" data-act="close">Done</button></div>`);
+      const t = $("#copy-text"); t.focus(); t.select();
+    };
+    try { navigator.clipboard.writeText(text).then(onDone, fallback); } catch { fallback(); }
+  }
+  function copyLabel(o) {
+    copyText(labelText(o), "Copy for the package", () => toast("Copied name, number, address and item"));
+  }
+
+  // ---------- sheets ----------
+  function openSheet(html) {
+    $("#layer").innerHTML = `<div class="scrim" id="scrim"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;
+    $("#scrim").addEventListener("click", (e) => { if (e.target.id === "scrim") closeSheet(); });
+  }
+  function closeSheet() { $("#layer").innerHTML = ""; }
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSheet(); });
+
+  function deliverySheet(o) {
+    const s = ship(o);
+    openSheet(`<h3>Change delivery</h3>
+      <p class="sub">The original details from @${esc(handle(o.tiktok))} are kept: ${esc(o.name)}, ${esc(o.phone)}, ${esc(o.address)}.</p>
+      <form class="stack" id="dl-form">
+        <div class="field"><label for="dl-name">Deliver to (name)</label><input id="dl-name" required value="${esc(s.name)}"></div>
+        <div class="field"><label for="dl-phone">Contact number</label><input id="dl-phone" type="tel" inputmode="tel" required value="${esc(s.phone)}"></div>
+        <div class="field"><label for="dl-address">Address</label><textarea id="dl-address" required>${esc(s.address)}</textarea></div>
+        <div class="row">
+          <button class="btn primary" type="submit">Save delivery</button>
+          ${o.delivery ? `<button class="btn" type="button" id="dl-reset">Use original</button>` : ""}
+          <button class="btn" type="button" data-act="close">Cancel</button>
+        </div>
+      </form>`);
+    $("#dl-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const d = { name: $("#dl-name").value.trim(), phone: $("#dl-phone").value.trim(), address: $("#dl-address").value.trim() };
+      const same = d.name === o.name && d.phone === o.phone && d.address === o.address;
+      closeSheet();
+      saveOrder({ ...o, delivery: same ? null : { ...d, changedAt: today() } }).then(() => toast(same ? "Back to original details" : "Delivery details changed")).catch(() => {});
+    });
+    const r = $("#dl-reset");
+    if (r) r.addEventListener("click", () => { closeSheet(); saveOrder({ ...o, delivery: null }).then(() => toast("Back to original details")).catch(() => {}); });
+  }
+
+  // ---------- Online cart (Shein, Lazada…): several orders checked out together ----------
+  // Split the cart total across orders: by item price when every ticked order has one,
+  // otherwise by what each customer paid.
+  function splitCart(rows, total) {
+    const byItem = rows.length && rows.every((r) => r.itemBaht > 0);
+    const weights = rows.map((r) => (byItem ? r.itemBaht : Number(r.o.price) || 0));
+    const sum = weights.reduce((s, w) => s + w, 0);
+    const shares = rows.map((r, i) => (sum > 0 ? (total * weights[i]) / sum : total / rows.length));
+    const rounded = shares.map((s) => Math.round(s * 100) / 100);
+    if (rounded.length) rounded[rounded.length - 1] = Math.round((total - rounded.slice(0, -1).reduce((s, x) => s + x, 0)) * 100) / 100;
+    return { byItem, shares: rounded };
+  }
+
+  function cartSheet(day) {
+    const waiting = orders.filter((x) => x.status === "paid")
+      .sort((a, b) => (b.date === day) - (a.date === day) || String(b.date).localeCompare(String(a.date)) || String(a.createdAt).localeCompare(String(b.createdAt)));
+    const row = (o) => `<div class="cart-row">
+        <input type="checkbox" id="ck-${o.id}" data-id="${o.id}" ${o.date === day ? "checked" : ""}>
+        <label for="ck-${o.id}" class="cart-who"><b>@${esc(handle(o.tiktok))}</b> ${esc(o.item)}<small class="num">${o.date === day ? "" : esc(shortDay(o.date)) + " · "}sold ${nu(o.price)}</small></label>
+        <div class="money-in sm"><span>฿</span><input id="ib-${o.id}" class="num" type="number" inputmode="decimal" min="0" step="any" placeholder="item" value="${hasBaht(o) ? esc(o.costBaht) : ""}"aria-label="Item price in Baht for @${esc(handle(o.tiktok))}"></div>
+        <div class="cart-out num" id="out-${o.id}"></div>
+      </div>`;
+    openSheet(`<h3>Place order</h3>
+      <p class="sub">Tick the orders in this cart and enter the total you paid. The app splits it across them.</p>
+      <form id="cart-form" class="stack">
+        <div class="cart-list">${waiting.map(row).join("")}</div>
+        <div class="two">
+          <div class="field"><label for="cart-total">Total paid (฿)</label><input id="cart-total" class="num" type="number" inputmode="decimal" min="0" step="any" placeholder="e.g. 500"></div>
+          <div class="field"><label for="cart-no">Order no.</label><input id="cart-no" placeholder="optional" autocapitalize="none"></div>
+        </div>
+        <p class="hint" id="cart-note"></p>
+        <div class="row"><button class="btn primary" type="submit" id="cart-go" style="flex:1;padding:12px">Mark ordered</button><button class="btn" type="button" data-act="close">Cancel</button></div>
+      </form>`);
+
+    const readRows = () => waiting.filter((o) => $("#ck-" + o.id).checked)
+      .map((o) => ({ o, itemBaht: Number($("#ib-" + o.id).value) || 0 }));
+    // What each ticked order will cost in Baht (null = no cost yet), and the cart total to record.
+    // A typed total is split across the orders; with no total, each order uses its own item price.
+    const plan = (rows, total) => {
+      if (total !== null) { const s = splitCart(rows, total); return { costs: s.shares, total, mode: s.byItem ? "byItem" : "byPrice" }; }
+      const costs = rows.map((x) => (x.itemBaht > 0 ? x.itemBaht : null));
+      const all = costs.every((c) => c !== null);
+      return { costs, total: all ? Math.round(costs.reduce((s, c) => s + c, 0) * 100) / 100 : null, mode: all ? "sum" : costs.some((c) => c !== null) ? "some" : "none" };
+    };
+    const update = () => {
+      const rows = readRows();
+      const total = readBaht($("#cart-total").value);
+      const r = rate();
+      waiting.forEach((o) => { $("#out-" + o.id).textContent = ""; });
+      const sumItems = rows.filter((x) => x.itemBaht > 0).reduce((s, x) => s + x.itemBaht, 0);
+      $("#cart-total").placeholder = sumItems ? `${Math.round(sumItems * 100) / 100} (items)` : "e.g. 500";
+      let note;
+      if (!rows.length) note = "Tick at least one order.";
+      else if (total === undefined) note = "Enter the total as a number, like 500.";
+      else {
+        const pl = plan(rows, total);
+        let cost = 0, sold = 0;
+        rows.forEach((x, i) => {
+          sold += Number(x.o.price) || 0;
+          if (pl.costs[i] === null) { $("#out-" + x.o.id).textContent = "No cost yet"; return; }
+          const c = toNu(pl.costs[i], r), p = Number(x.o.price) - c;
+          cost += c;
+          $("#out-" + x.o.id).innerHTML = `${baht(pl.costs[i])} = ${nu(c)} · <span class="${p < 0 ? "neg" : "pos"}">profit ${signedNu(p)}</span>`;
+        });
+        const sum = pl.total !== null ? `Cart ${baht(pl.total)} = ${nu(cost)}. Sold for ${nu(sold)}, profit ${signedNu(sold - cost)}. ` : "";
+        note = sum + ({
+          byItem: "Total split by the item prices.",
+          byPrice: "Total split by what each customer paid. Enter every item's price to split by those instead.",
+          sum: "Total is the item prices added up. If the store charged a different total (shipping, discount), type it above.",
+          some: "Orders without an item price stay without a cost. You can add it later.",
+          none: "Enter item prices or the total, or leave both empty to add costs later.",
+        })[pl.mode] + ` Rate ฿1 = Nu. ${fmtRate(r)}.`;
+      }
+      $("#cart-note").textContent = note;
+      $("#cart-go").textContent = rows.length ? `Mark ${rows.length} ordered 💵` : "Mark ordered";
+      $("#cart-go").disabled = !rows.length;
+    };
+    $("#cart-form").addEventListener("input", update);
+    update();
+
+    $("#cart-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const rows = readRows();
+      const total = readBaht($("#cart-total").value);
+      if (!rows.length) return;
+      if (total === undefined) return toast("Enter the total as a number, like 500", true);
+      const r = rate();
+      const no = $("#cart-no").value.trim();
+      const pl = plan(rows, total);
+      const sheinOrder = { id: "c" + Date.now().toString(36), no: no || null, totalBaht: pl.total, count: rows.length, placedAt: today() };
+      closeSheet();
+      rows.forEach((x, i) => {
+        const n = { ...setStatus(x.o, "ordered"), sheinOrder };
+        const c = pl.costs[i];
+        // Keep the rate an existing cost was saved with when the amount didn't change
+        if (c !== null) Object.assign(n, costFields(c, hasBaht(x.o) && x.o.costBaht === c ? x.o.rate : r));
+        else if (hasBaht(x.o)) Object.assign(n, costFields(null, r)); // item box was cleared
+        saveOrder(n).catch(() => {});
+      });
+      toast(`${rows.length} order${rows.length === 1 ? "" : "s"} marked as ordered`);
+    });
+  }
+
+  // ---------- add / edit form ----------
+  function customers() {
+    const map = new Map();
+    [...orders].sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt))).forEach((o) => {
+      map.set(handle(o.tiktok).toLowerCase(), o);
+    });
+    return map;
+  }
+
+  function renderForm() {
+    const editing = ui.editId ? orders.find((o) => o.id === ui.editId) : null;
+    const o = editing || { tiktok: "", name: "", phone: "", address: "", item: "", price: "", date: today(), cost: null };
+    const names = [...customers().values()].map((c) => `<option value="${esc(handle(c.tiktok))}"></option>`).join("");
+    $("#view").innerHTML = `
+      <h1 class="view-title">${editing ? "Edit order" : "New order"}</h1>
+      ${editing ? `<div class="edit-note">Editing @${esc(handle(o.tiktok))}'s order. To change only where it goes, use <b>Change delivery</b> on the order instead so the original is kept.</div>` : ""}
+      <form class="stack" id="order-form" data-edit="${esc(ui.editId || "")}" autocomplete="off">
+        <div class="field"><label for="f-tiktok">TikTok username</label>
+          <div class="at"><input id="f-tiktok" list="f-users" required autocapitalize="none" spellcheck="false" value="${esc(handle(o.tiktok))}" placeholder="username"></div>
+          <datalist id="f-users">${names}</datalist></div>
+        <div id="suggest"></div>
+        <div class="field"><label for="f-name">Customer name</label><input id="f-name" required value="${esc(o.name)}" autocomplete="off"></div>
+        <div class="field"><label for="f-phone">Contact number</label><input id="f-phone" type="tel" inputmode="tel" required value="${esc(o.phone)}"></div>
+        <div class="field"><label for="f-address">Address</label><textarea id="f-address" required>${esc(o.address)}</textarea></div>
+        <div class="field"><label for="f-item">Item</label><input id="f-item" required value="${esc(o.item)}" placeholder="e.g. Black ribbed knit top, size M"></div>
+        <div class="two">
+          <div class="field"><label for="f-price">Price paid (Nu.)</label><input id="f-price" class="num" type="number" inputmode="decimal" min="0" step="any" required value="${esc(o.price)}"></div>
+          <div class="field"><label for="f-date">Date</label><input id="f-date" type="date" required value="${esc(o.date)}"></div>
+        </div>
+        <div class="field"><label for="f-cost">Buying cost in Baht (฿), optional</label><input id="f-cost" class="num" type="number" inputmode="decimal" min="0" step="any" value="${hasBaht(o) ? esc(o.costBaht) : ""}" placeholder="e.g. 70">
+          <span class="hint num" id="f-cost-hint"></span></div>
+        <div class="row">
+          <button class="btn primary" type="submit" style="flex:1;padding:12px">${editing ? "Save changes" : "Save order"}</button>
+          ${editing ? `<a class="btn" href="#orders" style="text-decoration:none">Cancel</a>` : ""}
+        </div>
+      </form>`;
+
+    const tk = $("#f-tiktok");
+    const suggest = () => {
+      const box = $("#suggest");
+      if (editing) return (box.innerHTML = "");
+      const c = customers().get(handle(tk.value).toLowerCase());
+      if (!c) return (box.innerHTML = "");
+      const s = ship(c);
+      box.innerHTML = `<div class="suggest"><span>Returning customer: ${esc(s.name)}, ${esc(s.phone)}</span><button type="button" class="btn small" id="fill">Fill details</button></div>`;
+      $("#fill").addEventListener("click", () => {
+        $("#f-name").value = s.name; $("#f-phone").value = s.phone; $("#f-address").value = s.address;
+        box.innerHTML = ""; $("#f-item").focus();
+      });
+    };
+    tk.addEventListener("input", suggest);
+
+    // Rate for this form: keep an edited order's locked rate unless its Baht amount changes
+    const formRate = (b) => (editing && hasBaht(editing) && b === editing.costBaht ? editing.rate : rate());
+    const costHint = () => {
+      const b = readBaht($("#f-cost").value);
+      const price = Number($("#f-price").value);
+      const hint = $("#f-cost-hint");
+      if (b === null) { hint.textContent = `You can add this later from the order. Rate: ฿1 = Nu. ${fmtRate(rate())}`; return; }
+      if (b === undefined) { hint.textContent = "Enter a number, like 70"; return; }
+      const r = formRate(b), nuCost = toNu(b, r);
+      let t = `${baht(b)} × ${fmtRate(r)} = ${nu(nuCost)}`;
+      if ($("#f-price").value.trim() !== "" && isFinite(price)) t += ` · profit ${signedNu(price - nuCost)}`;
+      hint.textContent = t;
+    };
+    $("#f-cost").addEventListener("input", costHint);
+    $("#f-price").addEventListener("input", costHint);
+    costHint();
+
+    $("#order-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (!store) return toast("Still connecting. Try again in a moment.", true);
+      const price = Number($("#f-price").value);
+      const b = readBaht($("#f-cost").value);
+      if (!isFinite(price) || price < 0) return toast("Enter the price as a number, like 1200", true);
+      if (b === undefined) return toast("Enter the buying cost in Baht, like 70", true);
+      // An old order whose cost was typed in Nu. keeps it when the Baht box is left empty
+      const keepOldNu = editing && b === null && !hasBaht(editing) && hasCost(editing);
+      const base = {
+        tiktok: handle(tk.value), name: $("#f-name").value.trim(), phone: $("#f-phone").value.trim(),
+        address: $("#f-address").value.trim(), item: $("#f-item").value.trim(), price, date: $("#f-date").value,
+        ...(keepOldNu ? {} : costFields(b, formRate(b))),
+      };
+      if (editing) {
+        saveOrder({ ...editing, ...base }).then(() => toast("Order updated")).catch(() => {});
+        ui.editId = null;
+        location.hash = "orders";
+      } else {
+        const o = { id: store.newId(), ...base, status: "paid", orderedAt: null, arrivedAt: null, deliveredAt: null, delivery: null, createdAt: new Date().toISOString() };
+        ui.saved = o;
+        saveOrder(o).catch(() => {});
+        window.scrollTo(0, 0);
+      }
+    });
+  }
+
+  function renderSaved() {
+    const o = ui.saved;
+    $("#view").innerHTML = `
+      <div id="saved-view" class="saved">
+        <div class="tick" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+        <h1 class="view-title">Order saved</h1>
+        <div class="saved-card">
+          <div class="o-who">@${esc(o.tiktok)} <span>· ${esc(o.name)}</span></div>
+          <div class="o-item">${esc(o.item)}</div>
+          <div class="saved-row num"><span>${esc(fmtDay(o.date))}</span><b>${nu(o.price)}</b></div>
+          ${hasCost(o) ? `<div class="meta num">Cost ${baht(o.costBaht)} = ${nu(o.cost)} · profit ${signedNu(o.price - o.cost)}</div>` : ""}
+        </div>
+        <div class="saved-actions">
+          <button class="btn primary" id="again">Add another order</button>
+          <a class="btn" href="#orders">See orders</a>
+        </div>
+      </div>`;
+    $("#again").addEventListener("click", () => { ui.saved = null; renderForm(); window.scrollTo(0, 0); $("#f-tiktok").focus(); });
+  }
+
+  // ---------- report ----------
+  function inPeriod(o) {
+    const t = today();
+    const ym = t.slice(0, 7);
+    if (ui.period === "month") return o.date.slice(0, 7) === ym;
+    if (ui.period === "last") {
+      const [y, m] = ym.split("-").map(Number);
+      const p = m === 1 ? `${y - 1}-12` : `${y}-${pad(m - 1)}`;
+      return o.date.slice(0, 7) === p;
+    }
+    return true;
+  }
+
+  function renderReport() {
+    const view = $("#view");
+    const periods = [["month", "This month"], ["last", "Last month"], ["all", "All time"]]
+      .map(([k, l]) => `<button class="chip" data-act="period" data-p="${k}" aria-pressed="${ui.period === k}">${l}</button>`).join("");
+    if (!loaded) { view.innerHTML = `<h1 class="view-title">Report</h1><div class="empty"><h3>Loading…</h3></div>`; return; }
+    const focusRate = document.activeElement && document.activeElement.id === "rate-in";
+    const list = orders.filter(inPeriod);
+    const received = list.reduce((s, o) => s + (Number(o.price) || 0), 0);
+    const withCost = list.filter(hasCost);
+    const costSum = withCost.reduce((s, o) => s + Number(o.cost), 0);
+    const bahtSum = withCost.reduce((s, o) => s + (hasBaht(o) ? Number(o.costBaht) : 0), 0);
+    const rateBox = `<div class="rate-box">
+        <label for="rate-in">Baht rate</label>
+        <div class="money-in"><span>฿1 = Nu.</span><input id="rate-in" class="num" type="number" inputmode="decimal" min="0" step="any" value="${esc(rate())}"></div>
+        <span class="meta">Used for new costs. Costs already entered keep the rate they were saved with.</span>
+      </div>`;
+    const profit = withCost.reduce((s, o) => s + Number(o.price) - Number(o.cost), 0);
+    const missing = list.length - withCost.length;
+    const losing = withCost.filter((o) => Number(o.cost) > Number(o.price)).sort((a, b) => (Number(a.price) - Number(a.cost)) - (Number(b.price) - Number(b.cost)));
+
+    const cust = new Map();
+    list.forEach((o) => {
+      const k = handle(o.tiktok).toLowerCase();
+      const c = cust.get(k) || { tiktok: handle(o.tiktok), name: o.name, n: 0, spent: 0 };
+      c.n += 1; c.spent += Number(o.price) || 0; c.name = o.name;
+      cust.set(k, c);
+    });
+    const best = [...cust.values()].sort((a, b) => b.spent - a.spent || b.n - a.n).slice(0, 5);
+    const pipe = STEPS.map(([k, l]) => `<div><b class="num">${list.filter((o) => o.status === k).length}</b><span>${l.replace(" 💵", "")}</span></div>`).join("");
+
+    view.innerHTML = `
+      <h1 class="view-title">Report</h1>
+      ${rateBox}
+      <div class="chips periods">${periods}</div>
+      ${!list.length ? `<div class="empty"><h3>No orders in this period</h3><p>Pick another period or add orders.</p></div>` : `
+      <div class="tiles">
+        <div class="tile wide"><div class="k">Money received</div><div class="v num">${nu(received)}</div></div>
+        <div class="tile"><div class="k">Buying cost</div><div class="v num">${nu(costSum)}</div>${bahtSum ? `<div class="meta num">${baht(bahtSum)} spent</div>` : ""}</div>
+        <div class="tile"><div class="k">Profit</div><div class="v num ${profit < 0 ? "neg" : "pos"}">${signedNu(profit)}</div></div>
+      </div>
+      <p class="note">${list.length} order${list.length === 1 ? "" : "s"}. Profit counts the ${withCost.length} with a cost entered.
+        ${missing ? `<button data-act="show-nocost">${missing} still need a cost</button>.` : "Every order has a cost."}</p>
+
+      <section class="rep"><h2>Where orders are</h2><div class="pipe">${pipe}</div></section>
+
+      <section class="rep"><h2>Losing orders</h2>
+        ${losing.length ? `<div class="tbl">${losing.map((o) => `<div class="tr lose"><span class="nm">@${esc(handle(o.tiktok))} · ${esc(o.item)}<small class="num">${shortDay(o.date)} · paid ${nu(o.price)}, cost ${nu(o.cost)}</small></span><span class="t num" style="color:var(--late)">${signedNu(Number(o.price) - Number(o.cost))}</span></div>`).join("")}</div>`
+        : `<p class="note">No losing orders${missing ? " among orders with a cost" : ""}.</p>`}
+      </section>
+
+      <section class="rep"><h2>Best customers</h2>
+        <div class="tbl">${best.map((c, i) => `<div class="tr"><span class="rk num">${i + 1}</span><span class="nm">@${esc(c.tiktok)}<small>${esc(c.name)}</small></span><span class="c num">${c.n} order${c.n === 1 ? "" : "s"}</span><span class="t num">${nu(c.spent)}</span></div>`).join("")}</div>
+      </section>`}`;
+    if (store && store.mode === "firebase" && ui.user) {
+      view.insertAdjacentHTML("beforeend", `<p class="note account">Signed in as ${esc(ui.user.email)} · <button id="signout">Sign out</button></p>`);
+      $("#signout").addEventListener("click", () => ui.signOut());
+    }
+    if (focusRate) $("#rate-in").focus();
+  }
+
+  // ---------- boot ----------
+  render();
+  initStore();
+})();
+</script>
+</body>
+</html>

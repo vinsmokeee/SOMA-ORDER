@@ -2,6 +2,11 @@
 
 A phone-friendly tracker for SOMA's TikTok pre-orders: customer pays → ordered online (Shein, Lazada…) → parcel arrives from Bangkok → delivered.
 
+The app runs in two places from the same code:
+
+- **Own website (recommended)**: `docs/`, built by `python3 build.py`, served by GitHub Pages and saving to Firebase. Opens and saves offline, installs as a home screen app, no Claude account needed. Setup steps are in [SETUP.md](SETUP.md).
+- **Claude artifact**: `index.html` published as a Claude page, saving to the artifact database.
+
 The whole app is `index.html` plus the SOMA logo in `assets/` (`soma-mark.png` for the header, `soma-logo.jpg` for the empty screen). It runs as a Claude artifact. That keeps orders in an online database, so any phone signed in to the same claude.ai account sees the same orders. Opened anywhere else (a downloaded copy, another host), it falls back to saving on that phone only and shows a banner saying so.
 
 ## Screens
@@ -38,3 +43,13 @@ One document per order in the `orders` collection:
 The rate lives in `settings/main` as `{rate}`.
 
 Profit only counts orders that have a cost. The report shows how many orders still need one.
+
+## Files
+
+| file | purpose |
+|---|---|
+| `index.html` | the app (page fragment; also the Claude artifact source) |
+| `build.py` | wraps `index.html` into the website in `docs/` |
+| `web/` | website-only files: Firebase settings, app manifest, offline service worker |
+| `firestore.rules` | database rules: only the two SOMA accounts can read or change orders |
+| `assets/` | SOMA logo and home screen icons |
