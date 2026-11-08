@@ -148,6 +148,7 @@ nav.tabs a.add-tab span.plus svg { width: 20px; height: 20px; }
 .btn {
   border: 1px solid var(--line); background: var(--surface); border-radius: 9px; padding: 8px 12px; font-weight: 600; font-size: 14px;
 }
+a.btn { color: var(--ink); }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .btn.danger { color: var(--late); }
 .btn.danger.arm { background: var(--late); border-color: var(--late); color: var(--surface); }
@@ -209,6 +210,22 @@ section.rep h2 { font: 700 17px var(--f-display); margin: 0 0 8px; }
 .pipe b { display: block; font: 800 20px var(--f-display); }
 .pipe span { font-size: 12px; color: var(--muted); font-weight: 600; }
 
+.rate-box { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 14px; }
+.rate-box label { font-weight: 700; font-size: 14px; }
+.rate-box .money-in input { width: 80px; }
+.rate-box .meta { flex-basis: 100%; }
+
+/* Saved confirmation */
+.saved { display: flex; flex-direction: column; align-items: stretch; gap: 14px; padding-top: 18px; }
+.saved .view-title { margin: 0; text-align: center; }
+.tick { width: 56px; height: 56px; border-radius: 50%; background: var(--ok-soft); color: var(--ok); display: flex; align-items: center; justify-content: center; align-self: center; }
+.tick svg { width: 30px; height: 30px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.saved-card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 4px; }
+.saved-row { display: flex; justify-content: space-between; gap: 10px; color: var(--muted); margin-top: 4px; }
+.saved-row b { color: var(--ink); font: 700 17px var(--f-display); }
+.saved-actions { display: flex; flex-direction: column; gap: 8px; }
+.saved-actions .btn { padding: 13px; text-align: center; text-decoration: none; font-size: 15px; }
+
 /* Sheet + toast */
 .scrim { position: fixed; inset: 0; background: rgba(0, 0, 0, .45); z-index: 20; display: flex; align-items: flex-end; justify-content: center; }
 .sheet {
@@ -261,10 +278,12 @@ section.rep h2 { font: 700 17px var(--f-display); margin: 0 0 8px; }
   const STEP_IDX = Object.fromEntries(STEPS.map(([k], i) => [k, i]));
 
   // ---------- state ----------
+  const DEFAULT_RATE = 2.85; // Nu. per 1 Baht; the shop sets its own rate on the Report screen
   let orders = [];
+  let settings = { rate: DEFAULT_RATE };
   let loaded = false;
   let store = null;
-  const ui = { filter: "active", q: "", open: new Set(), period: "month", editId: null, armDelete: null };
+  const ui = { filter: "active", q: "", open: new Set(), period: "month", editId: null, armDelete: null, saved: null };
 
   // ---------- helpers ----------
   const $ = (s, r = document) => r.querySelector(s);
@@ -289,6 +308,15 @@ section.rep h2 { font: 700 17px var(--f-display); margin: 0 0 8px; }
   const ship = (o) => o.delivery || { name: o.name, phone: o.phone, address: o.address };
   const hasCost = (o) => o.cost !== null && o.cost !== undefined && o.cost !== "";
   const isLate = (o) => o.status === "ordered" && daysSince(o.orderedAt) > LATE_DAYS;
+  const rate = () => Number(settings.rate) > 0 ? Number(settings.rate) : DEFAULT_RATE;
+  const fmtRate = (r) => Number(r).toLocaleString("en-IN", { maximumFractionDigits: 4 });
+  const baht = (n) => "฿" + Number(n).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+  const toNu = (b, r) => Math.round(Number(b) * Number(r));
+  const hasBaht = (o) => o.costBaht !== null && o.costBaht !== undefined && o.costBaht !== "";
+  // Parse a Baht cost field: "" -> null, bad -> undefined
+  const readBaht = (v) => { v = String(v).trim(); if (v === "") return null; const n = Number(v); return isFinite(n) && n >= 0 ? n : undefined; };
+  // Cost fields for an order from a Baht amount, locked to the rate in force when entered
+  const costFields = (b, r) => b === null ? { costBaht: null, rate: null, cost: null } : { costBaht: b, rate: r, cost: toNu(b, r) };
 
   let toastTimer;
   function toast(msg, err) {
@@ -326,9 +354,12 @@ section.rep h2 { font: 700 17px var(--f-display); margin: 0 0 8px; }
 
   function localStore() {
     const KEY = "soma-orders-v1";
+    const SKEY = "soma-settings-v1";
     try { orders = JSON.parse(localStorage.getItem(KEY) || "[]"); } catch { orders = []; }
+    try { settings = { ...settings, ...JSON.parse(localStorage.getItem(SKEY) || "{}") }; } catch {}
     const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(orders)); } catch {} return Promise.resolve(); };
-    return { mode: "local", newId: () => "o" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7), save: persist, remove: persist };
+    const saveSettings = () => { try { localStorage.setItem(SKEY, JSON.stringify(settings)); } catch {} return Promise.resolve(); };
+    return { mode: "local", newId: () => "o" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7), save: persist, remove: persist, saveSettings };
   }
 
   function setSync(mode, text) {
@@ -354,7 +385,11 @@ section.rep h2 { font: 700 17px var(--f-display); margin: 0 0 8px; }
       newId: () => col.doc().id,
       save: (o) => { const { id, ...data } = o; return col.doc(id).set(data); },
       remove: (id) => col.doc(id).delete(),
+      saveSettings: () => db.doc("settings/main").set({ ...settings }),
     };
+    db.doc("settings/main").onSnapshot((snap) => {
+      if (snap.exists) { settings = { ...settings, ...snap.data() }; render(); }
+    }, () => {});
     const slow = setTimeout(() => { if (!loaded) setSync("", "Still connecting…"); }, 10000);
     col.onSnapshot(
       (snap) => {
@@ -374,13 +409,17 @@ section.rep h2 { font: 700 17px var(--f-display); margin: 0 0 8px; }
 
   // ---------- routing ----------
   const route = () => { const h = location.hash.slice(1); return ["orders", "add", "report"].includes(h) ? h : "orders"; };
-  window.addEventListener("hashchange", () => { if (route() !== "add") ui.editId = null; render(); window.scrollTo(0, 0); });
+  window.addEventListener("hashchange", () => { if (route() !== "add") { ui.editId = null; ui.saved = null; } render(); window.scrollTo(0, 0); });
 
   function render() {
     const r = route();
     document.querySelectorAll("nav.tabs a").forEach((a) => { if (a.dataset.tab === r) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
-    if (r === "add") { if (!$("#order-form") || $("#order-form").dataset.edit !== String(ui.editId || "")) renderForm(); return; }
-    if (r === "report") return renderReport();
+    if (r === "add") {
+      if (ui.saved) { if (!$("#saved-view")) renderSaved(); return; }
+      if (!$("#order-form") || $("#order-form").dataset.edit !== String(ui.editId || "")) renderForm();
+      return;
+    }
+    if (r === "report") { if (!$("#rate-in") || document.activeElement !== $("#rate-in")) renderReport(); return; }
     renderOrders();
   }
 
@@ -486,9 +525,10 @@ section.rep h2 { font: 700 17px var(--f-display); margin: 0 0 8px; }
       ${orig}
       <div class="cost-row">
         <label for="cost-${o.id}">Shein cost</label>
-        <div class="money-in"><span>Nu.</span><input id="cost-${o.id}" class="num" type="number" inputmode="decimal" min="0" step="any" data-act="cost" data-id="${o.id}" value="${hasCost(o) ? esc(o.cost) : ""}" placeholder="0"></div>
+        <div class="money-in"><span>฿</span><input id="cost-${o.id}" class="num" type="number" inputmode="decimal" min="0" step="any" data-act="cost" data-id="${o.id}" value="${hasBaht(o) ? esc(o.costBaht) : ""}" placeholder="0"></div>
         ${profit === null ? `<span class="meta">Add later</span>` : `<span class="profit num ${profit < 0 ? "neg" : "pos"}">Profit ${signedNu(profit)}</span>`}
       </div>
+      ${hasCost(o) ? `<div class="meta num">${hasBaht(o) ? `${baht(o.costBaht)} × ${fmtRate(o.rate)} = ` : "Cost "}${nu(o.cost)} · sold for ${nu(o.price)}</div>` : ""}
       <div class="row">
         <button class="btn small" data-act="delivery" data-id="${o.id}">Change delivery</button>
         <button class="btn small" data-act="edit" data-id="${o.id}">Edit order</button>
@@ -553,10 +593,19 @@ section.rep h2 { font: 700 17px var(--f-display); margin: 0 0 8px; }
     if (el.dataset.act === "cost") {
       const o = orders.find((x) => x.id === el.dataset.id);
       if (!o) return;
-      const v = el.value.trim() === "" ? null : Number(el.value);
-      if (v !== null && (!isFinite(v) || v < 0)) { toast("Enter the cost as a number, like 850", true); return; }
-      if ((o.cost ?? null) === v) return;
-      saveOrder({ ...o, cost: v }).then(() => toast(v === null ? "Cost cleared" : "Cost saved")).catch(() => {});
+      const v = readBaht(el.value);
+      if (v === undefined) { toast("Enter the Shein cost in Baht, like 70", true); return; }
+      if ((o.costBaht ?? null) === v && (v !== null || !hasCost(o))) return;
+      const f = costFields(v, rate());
+      saveOrder({ ...o, ...f }).then(() => toast(v === null ? "Cost cleared" : `Cost saved: ${baht(v)} = ${nu(f.cost)}`)).catch(() => {});
+    }
+    if (el.id === "rate-in") {
+      const r = Number(el.value);
+      if (!isFinite(r) || r <= 0) { toast("Enter the rate as a number, like 2.85", true); return; }
+      if (r === rate()) return;
+      settings = { ...settings, rate: r };
+      store.saveSettings().then(() => toast(`Rate saved: ฿1 = Nu. ${fmtRate(r)}`)).catch(() => toast("Could not save the rate. Try again.", true));
+      renderReport();
     }
   });
 
@@ -640,8 +689,8 @@ section.rep h2 { font: 700 17px var(--f-display); margin: 0 0 8px; }
           <div class="field"><label for="f-price">Price paid (Nu.)</label><input id="f-price" class="num" type="number" inputmode="decimal" min="0" step="any" required value="${esc(o.price)}"></div>
           <div class="field"><label for="f-date">Date</label><input id="f-date" type="date" required value="${esc(o.date)}"></div>
         </div>
-        <div class="field"><label for="f-cost">Shein cost (Nu.), optional</label><input id="f-cost" class="num" type="number" inputmode="decimal" min="0" step="any" value="${hasCost(o) ? esc(o.cost) : ""}">
-          <span class="hint">You can add this later from the order.</span></div>
+        <div class="field"><label for="f-cost">Shein cost in Baht (฿), optional</label><input id="f-cost" class="num" type="number" inputmode="decimal" min="0" step="any" value="${hasBaht(o) ? esc(o.costBaht) : ""}" placeholder="e.g. 70">
+          <span class="hint num" id="f-cost-hint"></span></div>
         <div class="row">
           <button class="btn primary" type="submit" style="flex:1;padding:12px">${editing ? "Save changes" : "Save order"}</button>
           ${editing ? `<a class="btn" href="#orders" style="text-decoration:none">Cancel</a>` : ""}
@@ -663,17 +712,36 @@ section.rep h2 { font: 700 17px var(--f-display); margin: 0 0 8px; }
     };
     tk.addEventListener("input", suggest);
 
+    // Rate for this form: keep an edited order's locked rate unless its Baht amount changes
+    const formRate = (b) => (editing && hasBaht(editing) && b === editing.costBaht ? editing.rate : rate());
+    const costHint = () => {
+      const b = readBaht($("#f-cost").value);
+      const price = Number($("#f-price").value);
+      const hint = $("#f-cost-hint");
+      if (b === null) { hint.textContent = `You can add this later from the order. Rate: ฿1 = Nu. ${fmtRate(rate())}`; return; }
+      if (b === undefined) { hint.textContent = "Enter a number, like 70"; return; }
+      const r = formRate(b), nuCost = toNu(b, r);
+      let t = `${baht(b)} × ${fmtRate(r)} = ${nu(nuCost)}`;
+      if ($("#f-price").value.trim() !== "" && isFinite(price)) t += ` · profit ${signedNu(price - nuCost)}`;
+      hint.textContent = t;
+    };
+    $("#f-cost").addEventListener("input", costHint);
+    $("#f-price").addEventListener("input", costHint);
+    costHint();
+
     $("#order-form").addEventListener("submit", (e) => {
       e.preventDefault();
       if (!store) return toast("Still connecting. Try again in a moment.", true);
       const price = Number($("#f-price").value);
-      const costRaw = $("#f-cost").value.trim();
-      const cost = costRaw === "" ? null : Number(costRaw);
+      const b = readBaht($("#f-cost").value);
       if (!isFinite(price) || price < 0) return toast("Enter the price as a number, like 1200", true);
-      if (cost !== null && (!isFinite(cost) || cost < 0)) return toast("Enter the cost as a number, like 850", true);
+      if (b === undefined) return toast("Enter the Shein cost in Baht, like 70", true);
+      // An old order whose cost was typed in Nu. keeps it when the Baht box is left empty
+      const keepOldNu = editing && b === null && !hasBaht(editing) && hasCost(editing);
       const base = {
         tiktok: handle(tk.value), name: $("#f-name").value.trim(), phone: $("#f-phone").value.trim(),
-        address: $("#f-address").value.trim(), item: $("#f-item").value.trim(), price, cost, date: $("#f-date").value,
+        address: $("#f-address").value.trim(), item: $("#f-item").value.trim(), price, date: $("#f-date").value,
+        ...(keepOldNu ? {} : costFields(b, formRate(b))),
       };
       if (editing) {
         saveOrder({ ...editing, ...base }).then(() => toast("Order updated")).catch(() => {});
@@ -681,13 +749,31 @@ section.rep h2 { font: 700 17px var(--f-display); margin: 0 0 8px; }
         location.hash = "orders";
       } else {
         const o = { id: store.newId(), ...base, status: "paid", orderedAt: null, arrivedAt: null, deliveredAt: null, delivery: null, createdAt: new Date().toISOString() };
-        saveOrder(o).then(() => toast(`Saved @${o.tiktok}`)).catch(() => {});
-        const keepDate = base.date;
-        renderForm();
-        $("#f-date").value = keepDate;
-        $("#f-tiktok").focus();
+        ui.saved = o;
+        saveOrder(o).catch(() => {});
+        window.scrollTo(0, 0);
       }
     });
+  }
+
+  function renderSaved() {
+    const o = ui.saved;
+    $("#view").innerHTML = `
+      <div id="saved-view" class="saved">
+        <div class="tick" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+        <h1 class="view-title">Order saved</h1>
+        <div class="saved-card">
+          <div class="o-who">@${esc(o.tiktok)} <span>· ${esc(o.name)}</span></div>
+          <div class="o-item">${esc(o.item)}</div>
+          <div class="saved-row num"><span>${esc(fmtDay(o.date))}</span><b>${nu(o.price)}</b></div>
+          ${hasCost(o) ? `<div class="meta num">Cost ${baht(o.costBaht)} = ${nu(o.cost)} · profit ${signedNu(o.price - o.cost)}</div>` : ""}
+        </div>
+        <div class="saved-actions">
+          <button class="btn primary" id="again">Add another order</button>
+          <a class="btn" href="#orders">See orders</a>
+        </div>
+      </div>`;
+    $("#again").addEventListener("click", () => { ui.saved = null; renderForm(); window.scrollTo(0, 0); $("#f-tiktok").focus(); });
   }
 
   // ---------- report ----------
@@ -708,10 +794,17 @@ section.rep h2 { font: 700 17px var(--f-display); margin: 0 0 8px; }
     const periods = [["month", "This month"], ["last", "Last month"], ["all", "All time"]]
       .map(([k, l]) => `<button class="chip" data-act="period" data-p="${k}" aria-pressed="${ui.period === k}">${l}</button>`).join("");
     if (!loaded) { view.innerHTML = `<h1 class="view-title">Report</h1><div class="empty"><h3>Loading…</h3></div>`; return; }
+    const focusRate = document.activeElement && document.activeElement.id === "rate-in";
     const list = orders.filter(inPeriod);
     const received = list.reduce((s, o) => s + (Number(o.price) || 0), 0);
     const withCost = list.filter(hasCost);
     const costSum = withCost.reduce((s, o) => s + Number(o.cost), 0);
+    const bahtSum = withCost.reduce((s, o) => s + (hasBaht(o) ? Number(o.costBaht) : 0), 0);
+    const rateBox = `<div class="rate-box">
+        <label for="rate-in">Baht rate</label>
+        <div class="money-in"><span>฿1 = Nu.</span><input id="rate-in" class="num" type="number" inputmode="decimal" min="0" step="any" value="${esc(rate())}"></div>
+        <span class="meta">Used for new costs. Costs already entered keep the rate they were saved with.</span>
+      </div>`;
     const profit = withCost.reduce((s, o) => s + Number(o.price) - Number(o.cost), 0);
     const missing = list.length - withCost.length;
     const losing = withCost.filter((o) => Number(o.cost) > Number(o.price)).sort((a, b) => (Number(a.price) - Number(a.cost)) - (Number(b.price) - Number(b.cost)));
@@ -728,14 +821,15 @@ section.rep h2 { font: 700 17px var(--f-display); margin: 0 0 8px; }
 
     view.innerHTML = `
       <h1 class="view-title">Report</h1>
+      ${rateBox}
       <div class="chips periods">${periods}</div>
       ${!list.length ? `<div class="empty"><h3>No orders in this period</h3><p>Pick another period or add orders.</p></div>` : `
       <div class="tiles">
         <div class="tile wide"><div class="k">Money received</div><div class="v num">${nu(received)}</div></div>
-        <div class="tile"><div class="k">Shein cost</div><div class="v num">${nu(costSum)}</div></div>
+        <div class="tile"><div class="k">Shein cost</div><div class="v num">${nu(costSum)}</div>${bahtSum ? `<div class="meta num">${baht(bahtSum)} paid on Shein</div>` : ""}</div>
         <div class="tile"><div class="k">Profit</div><div class="v num ${profit < 0 ? "neg" : "pos"}">${signedNu(profit)}</div></div>
       </div>
-      <p class="note">${list.length} orders. Profit counts the ${withCost.length} with a cost entered.
+      <p class="note">${list.length} order${list.length === 1 ? "" : "s"}. Profit counts the ${withCost.length} with a cost entered.
         ${missing ? `<button data-act="show-nocost">${missing} still need a cost</button>.` : "Every order has a cost."}</p>
 
       <section class="rep"><h2>Where orders are</h2><div class="pipe">${pipe}</div></section>
@@ -748,6 +842,7 @@ section.rep h2 { font: 700 17px var(--f-display); margin: 0 0 8px; }
       <section class="rep"><h2>Best customers</h2>
         <div class="tbl">${best.map((c, i) => `<div class="tr"><span class="rk num">${i + 1}</span><span class="nm">@${esc(c.tiktok)}<small>${esc(c.name)}</small></span><span class="c num">${c.n} order${c.n === 1 ? "" : "s"}</span><span class="t num">${nu(c.spent)}</span></div>`).join("")}</div>
       </section>`}`;
+    if (focusRate) $("#rate-in").focus();
   }
 
   // ---------- boot ----------

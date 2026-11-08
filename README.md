@@ -11,8 +11,12 @@ The whole app is one file, `index.html`. It runs as a Claude artifact. That keep
   - **Mark N ordered 💵** on a day header moves all of that day's Paid orders to Ordered.
   - Ordered parcels show "Day N of 8–10". Once more than 10 days have passed since ordering, they show **Late**.
   - Tap an order to open it: **Copy** (name, phone, address and item for the package), **Change delivery**, Shein cost, **Edit order**, **Delete**.
-- **Add**: TikTok username, name, number, address, item, price (Nu.), date (defaults to today), optional cost. Returning customers get a one-tap "Fill details".
-- **Report**: This month / Last month / All time. Shows money received, Shein cost, profit, orders at each step, losing orders and the top 5 customers.
+- **Add**: TikTok username, name, number, address, item, price (Nu.), date (defaults to today), optional Shein cost in Baht. Returning customers get a one-tap "Fill details". Saving shows an "Order saved" screen with **Add another order** and **See orders**.
+- **Report**: sets the Baht rate (฿1 = Nu. …, default 2.85). This month / Last month / All time show money received, Shein cost, profit, orders at each step, losing orders and the top 5 customers.
+
+## Baht costs
+
+Shein costs are typed in Baht and converted to Nu. with the rate on the Report screen. Each order saves the rate in force when its cost was entered, so changing the rate later does not change past profit.
 
 ## Data
 
@@ -22,10 +26,13 @@ One document per order in the `orders` collection:
 |---|---|
 | `tiktok`, `name`, `phone`, `address` | original details as taken on TikTok (never overwritten by a delivery change) |
 | `delivery` | `null`, or `{name, phone, address, changedAt}` when the delivery details were changed |
-| `item`, `price`, `cost` | prices in Nu.; `cost` is `null` until entered |
+| `item`, `price` | price paid in Nu. |
+| `costBaht`, `rate`, `cost` | Shein cost in Baht, the Nu.-per-Baht rate used, and the cost in Nu. (`costBaht × rate`, rounded); all `null` until entered |
 | `date` | order date `YYYY-MM-DD` (grouping key) |
 | `status` | `paid` / `ordered` / `arrived` / `delivered` |
 | `orderedAt`, `arrivedAt`, `deliveredAt` | `YYYY-MM-DD` when each step was reached |
 | `createdAt` | ISO timestamp |
+
+The rate lives in `settings/main` as `{rate}`.
 
 Profit only counts orders that have a cost. The report shows how many orders still need one.
