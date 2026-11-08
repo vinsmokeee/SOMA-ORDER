@@ -1,13 +1,10 @@
 rules_version = '2';
-// Only the SOMA accounts listed below can read or change orders.
-// Replace the two values with the User UIDs from Firebase console → Authentication → Users.
+// Only the SOMA account can read or change orders.
+// The UID comes from Firebase console → Authentication → Users.
 service cloud.firestore {
   match /databases/{database}/documents {
     function isSoma() {
-      return request.auth != null && request.auth.uid in [
-        'OWNER_UID',
-        'HELPER_UID'
-      ];
+      return request.auth != null && request.auth.uid == 'YtZ6gwGgacZYAV2InTP10uNyGVn1';
     }
     match /orders/{orderId} {
       allow read, write: if isSoma();
