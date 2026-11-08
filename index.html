@@ -260,7 +260,7 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
 .rate-box .money-in input { width: 80px; }
 .rate-box .meta { flex-basis: 100%; }
 
-/* Shein cart sheet */
+/* Online cart sheet */
 .cart-list { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
 .cart-row { display: grid; grid-template-columns: 20px 1fr auto; gap: 6px 10px; align-items: center; padding: 10px 12px; border-top: 1px solid var(--line); }
 .cart-row:first-child { border-top: 0; }
@@ -557,7 +557,7 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
           delivered === allDay.length ? `<span class="ds ok">All delivered</span>` : "",
         ].join("");
         const hint = dayHint(d);
-        const action = toOrder ? `<button class="btn-day" data-act="dayorder" data-day="${d}">Place Shein order 💵</button>` : "";
+        const action = toOrder ? `<button class="btn-day" data-act="dayorder" data-day="${d}">Place order 💵</button>` : "";
         return `<section class="day ${open ? "open" : ""}"><div class="day-head">
             <button class="day-toggle" data-act="day" data-day="${d}" aria-expanded="${open}" ${forceOpen ? "disabled" : ""}>
               <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
@@ -621,12 +621,12 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
       </div>
       ${orig}
       <div class="cost-row">
-        <label for="cost-${o.id}">Shein cost</label>
+        <label for="cost-${o.id}">Buying cost</label>
         <div class="money-in"><span>฿</span><input id="cost-${o.id}" class="num" type="number" inputmode="decimal" min="0" step="any" data-act="cost" data-id="${o.id}" value="${hasBaht(o) ? esc(o.costBaht) : ""}" placeholder="0"></div>
         ${profit === null ? `<span class="meta">Add later</span>` : `<span class="profit num ${profit < 0 ? "neg" : "pos"}">Profit ${signedNu(profit)}</span>`}
       </div>
       ${hasCost(o) ? `<div class="meta num">${hasBaht(o) ? `${baht(o.costBaht)} × ${fmtRate(o.rate)} = ` : "Cost "}${nu(o.cost)} · sold for ${nu(o.price)}</div>` : ""}
-      ${o.sheinOrder ? `<div class="meta num">Shein cart${o.sheinOrder.no ? " #" + esc(o.sheinOrder.no) : ""} placed ${shortDay(o.sheinOrder.placedAt)}: ${o.sheinOrder.totalBaht != null ? baht(o.sheinOrder.totalBaht) + " for " : ""}${o.sheinOrder.count} item${o.sheinOrder.count === 1 ? "" : "s"}</div>` : ""}
+      ${o.sheinOrder ? `<div class="meta num">Cart${o.sheinOrder.no ? " #" + esc(o.sheinOrder.no) : ""} placed ${shortDay(o.sheinOrder.placedAt)}: ${o.sheinOrder.totalBaht != null ? baht(o.sheinOrder.totalBaht) + " for " : ""}${o.sheinOrder.count} item${o.sheinOrder.count === 1 ? "" : "s"}</div>` : ""}
       <div class="row">
         <button class="btn small" data-act="delivery" data-id="${o.id}">Change delivery</button>
         <button class="btn small" data-act="edit" data-id="${o.id}">Edit order</button>
@@ -702,7 +702,7 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
       const o = orders.find((x) => x.id === el.dataset.id);
       if (!o) return;
       const v = readBaht(el.value);
-      if (v === undefined) { toast("Enter the Shein cost in Baht, like 70", true); return; }
+      if (v === undefined) { toast("Enter the buying cost in Baht, like 70", true); return; }
       if ((o.costBaht ?? null) === v && (v !== null || !hasCost(o))) return;
       const f = costFields(v, rate());
       saveOrder({ ...o, ...f }).then(() => toast(v === null ? "Cost cleared" : `Cost saved: ${baht(v)} = ${nu(f.cost)}`)).catch(() => {});
@@ -769,8 +769,8 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
     if (r) r.addEventListener("click", () => { closeSheet(); saveOrder({ ...o, delivery: null }).then(() => toast("Back to original details")).catch(() => {}); });
   }
 
-  // ---------- Shein cart: several orders checked out together ----------
-  // Split the cart total across orders: by Shein item price when every ticked order has one,
+  // ---------- Online cart (Shein, Lazada…): several orders checked out together ----------
+  // Split the cart total across orders: by item price when every ticked order has one,
   // otherwise by what each customer paid.
   function splitCart(rows, total) {
     const byItem = rows.length && rows.every((r) => r.itemBaht > 0);
@@ -788,16 +788,16 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
     const row = (o) => `<div class="cart-row">
         <input type="checkbox" id="ck-${o.id}" data-id="${o.id}" ${o.date === day ? "checked" : ""}>
         <label for="ck-${o.id}" class="cart-who"><b>@${esc(handle(o.tiktok))}</b> ${esc(o.item)}<small class="num">${o.date === day ? "" : esc(shortDay(o.date)) + " · "}sold ${nu(o.price)}</small></label>
-        <div class="money-in sm"><span>฿</span><input id="ib-${o.id}" class="num" type="number" inputmode="decimal" min="0" step="any" placeholder="item" value="${hasBaht(o) ? esc(o.costBaht) : ""}"aria-label="Shein item price in Baht for @${esc(handle(o.tiktok))}"></div>
+        <div class="money-in sm"><span>฿</span><input id="ib-${o.id}" class="num" type="number" inputmode="decimal" min="0" step="any" placeholder="item" value="${hasBaht(o) ? esc(o.costBaht) : ""}"aria-label="Item price in Baht for @${esc(handle(o.tiktok))}"></div>
         <div class="cart-out num" id="out-${o.id}"></div>
       </div>`;
-    openSheet(`<h3>Place Shein order</h3>
-      <p class="sub">Tick the orders in this Shein cart and enter the total you paid. The app splits it across them.</p>
+    openSheet(`<h3>Place order</h3>
+      <p class="sub">Tick the orders in this cart and enter the total you paid. The app splits it across them.</p>
       <form id="cart-form" class="stack">
         <div class="cart-list">${waiting.map(row).join("")}</div>
         <div class="two">
-          <div class="field"><label for="cart-total">Total paid on Shein (฿)</label><input id="cart-total" class="num" type="number" inputmode="decimal" min="0" step="any" placeholder="e.g. 500"></div>
-          <div class="field"><label for="cart-no">Shein order no.</label><input id="cart-no" placeholder="optional" autocapitalize="none"></div>
+          <div class="field"><label for="cart-total">Total paid (฿)</label><input id="cart-total" class="num" type="number" inputmode="decimal" min="0" step="any" placeholder="e.g. 500"></div>
+          <div class="field"><label for="cart-no">Order no.</label><input id="cart-no" placeholder="optional" autocapitalize="none"></div>
         </div>
         <p class="hint" id="cart-note"></p>
         <div class="row"><button class="btn primary" type="submit" id="cart-go" style="flex:1;padding:12px">Mark ordered</button><button class="btn" type="button" data-act="close">Cancel</button></div>
@@ -836,8 +836,8 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
         const sum = pl.total !== null ? `Cart ${baht(pl.total)} = ${nu(cost)}. Sold for ${nu(sold)}, profit ${signedNu(sold - cost)}. ` : "";
         note = sum + ({
           byItem: "Total split by the item prices.",
-          byPrice: "Total split by what each customer paid. Enter every item's Shein price to split by those instead.",
-          sum: "Total is the item prices added up. If Shein charged a different total (shipping, discount), type it above.",
+          byPrice: "Total split by what each customer paid. Enter every item's price to split by those instead.",
+          sum: "Total is the item prices added up. If the store charged a different total (shipping, discount), type it above.",
           some: "Orders without an item price stay without a cost. You can add it later.",
           none: "Enter item prices or the total, or leave both empty to add costs later.",
         })[pl.mode] + ` Rate ฿1 = Nu. ${fmtRate(r)}.`;
@@ -868,7 +868,7 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
         else if (hasBaht(x.o)) Object.assign(n, costFields(null, r)); // item box was cleared
         saveOrder(n).catch(() => {});
       });
-      toast(`${rows.length} order${rows.length === 1 ? "" : "s"} marked as ordered on Shein`);
+      toast(`${rows.length} order${rows.length === 1 ? "" : "s"} marked as ordered`);
     });
   }
 
@@ -901,7 +901,7 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
           <div class="field"><label for="f-price">Price paid (Nu.)</label><input id="f-price" class="num" type="number" inputmode="decimal" min="0" step="any" required value="${esc(o.price)}"></div>
           <div class="field"><label for="f-date">Date</label><input id="f-date" type="date" required value="${esc(o.date)}"></div>
         </div>
-        <div class="field"><label for="f-cost">Shein cost in Baht (฿), optional</label><input id="f-cost" class="num" type="number" inputmode="decimal" min="0" step="any" value="${hasBaht(o) ? esc(o.costBaht) : ""}" placeholder="e.g. 70">
+        <div class="field"><label for="f-cost">Buying cost in Baht (฿), optional</label><input id="f-cost" class="num" type="number" inputmode="decimal" min="0" step="any" value="${hasBaht(o) ? esc(o.costBaht) : ""}" placeholder="e.g. 70">
           <span class="hint num" id="f-cost-hint"></span></div>
         <div class="row">
           <button class="btn primary" type="submit" style="flex:1;padding:12px">${editing ? "Save changes" : "Save order"}</button>
@@ -947,7 +947,7 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
       const price = Number($("#f-price").value);
       const b = readBaht($("#f-cost").value);
       if (!isFinite(price) || price < 0) return toast("Enter the price as a number, like 1200", true);
-      if (b === undefined) return toast("Enter the Shein cost in Baht, like 70", true);
+      if (b === undefined) return toast("Enter the buying cost in Baht, like 70", true);
       // An old order whose cost was typed in Nu. keeps it when the Baht box is left empty
       const keepOldNu = editing && b === null && !hasBaht(editing) && hasCost(editing);
       const base = {
@@ -1038,7 +1038,7 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
       ${!list.length ? `<div class="empty"><h3>No orders in this period</h3><p>Pick another period or add orders.</p></div>` : `
       <div class="tiles">
         <div class="tile wide"><div class="k">Money received</div><div class="v num">${nu(received)}</div></div>
-        <div class="tile"><div class="k">Shein cost</div><div class="v num">${nu(costSum)}</div>${bahtSum ? `<div class="meta num">${baht(bahtSum)} paid on Shein</div>` : ""}</div>
+        <div class="tile"><div class="k">Buying cost</div><div class="v num">${nu(costSum)}</div>${bahtSum ? `<div class="meta num">${baht(bahtSum)} spent</div>` : ""}</div>
         <div class="tile"><div class="k">Profit</div><div class="v num ${profit < 0 ? "neg" : "pos"}">${signedNu(profit)}</div></div>
       </div>
       <p class="note">${list.length} order${list.length === 1 ? "" : "s"}. Profit counts the ${withCost.length} with a cost entered.
