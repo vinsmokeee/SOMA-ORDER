@@ -98,10 +98,24 @@ nav.tabs a.add-tab span.plus svg { width: 20px; height: 20px; }
 .search { width: 100%; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 9px 12px; }
 
 /* Day groups */
-.day { margin-bottom: 22px; }
-.day-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 0 2px 8px; }
-.day-head h2 { font: 700 17px/1.2 var(--f-display); margin: 0; }
-.day-head h2 small { font: 500 13px var(--f-body); color: var(--muted); margin-left: 6px; }
+.day { margin-bottom: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.day.open { background: transparent; border-color: transparent; margin-bottom: 18px; }
+.day-head { display: flex; align-items: center; justify-content: space-between; gap: 8px 10px; flex-wrap: wrap; padding: 10px 12px 10px 6px; }
+.day.open .day-head { padding: 4px 2px 8px 0; }
+.day-toggle { display: flex; align-items: center; gap: 6px; background: none; border: 0; padding: 0; text-align: left; flex: 1 1 200px; min-width: 0; }
+.day-toggle:disabled { cursor: default; }
+.day-toggle:disabled .chev { visibility: hidden; }
+.chev { width: 20px; height: 20px; flex: none; fill: none; stroke: var(--muted); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+@media (prefers-reduced-motion: no-preference) { .chev { transition: transform .15s; } }
+.day.open .chev { transform: rotate(90deg); }
+.day-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.day-head h2 { font: 700 17px/1.2 var(--f-display); margin: 0; display: flex; align-items: center; gap: 8px; }
+.day-head h2 em { font: 600 11px var(--f-body); font-style: normal; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); }
+.day-sum { font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.ds { font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 5px; }
+.ds.wait { background: var(--gold-soft); color: var(--gold); }
+.ds.late { background: var(--late-soft); color: var(--late); }
+.ds.ok { background: var(--ok-soft); color: var(--ok); }
 .btn-day {
   border: 0; background: var(--gold-soft); color: var(--gold); font-weight: 700; font-size: 13px;
   padding: 7px 12px; border-radius: 8px;
@@ -296,7 +310,10 @@ section.rep h2 { font: 700 17px var(--f-display); margin: 0 0 8px; }
   let settings = { rate: DEFAULT_RATE };
   let loaded = false;
   let store = null;
-  const ui = { filter: "active", q: "", open: new Set(), period: "month", editId: null, armDelete: null, saved: null };
+  const ui = { filter: "active", q: "", open: new Set(), period: "month", editId: null, armDelete: null, saved: null, days: {} };
+  // Days the viewer opened or closed by hand (remembered on this phone only)
+  try { ui.days = JSON.parse(localStorage.getItem("soma-days-v1") || "{}") || {}; } catch {}
+  const saveDays = () => { try { localStorage.setItem("soma-days-v1", JSON.stringify(ui.days)); } catch {} };
 
   // ---------- helpers ----------
   const $ = (s, r = document) => r.querySelector(s);
@@ -316,6 +333,12 @@ section.rep h2 { font: 700 17px var(--f-display); margin: 0 0 8px; }
     if (diff === 1) return "Yesterday · " + label;
     return label + (y !== new Date().getFullYear() ? " " + y : "");
   };
+  const dayTitle = (s) => {
+    const [y, m, d] = s.split("-").map(Number);
+    const mon = new Date(y, m - 1, d).toLocaleDateString("en-GB", { month: "short" });
+    return `Orders of ${pad(d)} ${mon}${y !== new Date().getFullYear() ? " " + y : ""}`;
+  };
+  const dayHint = (s) => { const n = daysSince(s); return n === 0 ? "Today" : n === 1 ? "Yesterday" : ""; };
   const shortDay = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-GB", { day: "numeric", month: "short" }); };
   const handle = (t) => String(t || "").trim().replace(/^@+/, "");
   const ship = (o) => o.delivery || { name: o.name, phone: o.phone, address: o.address };
@@ -477,16 +500,30 @@ section.rep h2 { font: 700 17px var(--f-display); margin: 0 0 8px; }
     } else if (!list.length) {
       body = `<div class="empty"><h3>Nothing here</h3><p>No orders match this filter.</p></div>`;
     } else {
+      // Filters and search open every day so matches are never hidden
+      const forceOpen = ui.q.trim() !== "" || !["active", "all"].includes(ui.filter);
       body = days.map((d) => {
         const items = byDay.get(d).sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
         const allDay = orders.filter((o) => o.date === d);
-        const unpaidCount = allDay.filter((o) => o.status === "paid").length;
+        const toOrder = allDay.filter((o) => o.status === "paid").length;
+        const late = allDay.filter(isLate).length;
+        const delivered = allDay.filter((o) => o.status === "delivered").length;
         const total = allDay.reduce((s, o) => s + (Number(o.price) || 0), 0);
-        const action = unpaidCount
-          ? `<button class="btn-day" data-act="dayorder" data-day="${d}">Place Shein order 💵</button>`
-          : `<span class="day-done">All ordered on Shein</span>`;
-        return `<section class="day"><div class="day-head"><h2>${esc(fmtDay(d))}<small class="num">${allDay.length} · ${nu(total)}</small></h2>${action}</div>
-          <div class="list">${items.map(card).join("")}</div></section>`;
+        const open = forceOpen || (ui.days[d] ?? daysSince(d) === 0);
+        const status = [
+          toOrder ? `<span class="ds wait">${toOrder} to order</span>` : "",
+          late ? `<span class="ds late">${late} late</span>` : "",
+          delivered === allDay.length ? `<span class="ds ok">All delivered</span>` : "",
+        ].join("");
+        const hint = dayHint(d);
+        const action = toOrder ? `<button class="btn-day" data-act="dayorder" data-day="${d}">Place Shein order 💵</button>` : "";
+        return `<section class="day ${open ? "open" : ""}"><div class="day-head">
+            <button class="day-toggle" data-act="day" data-day="${d}" aria-expanded="${open}" ${forceOpen ? "disabled" : ""}>
+              <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+              <span class="day-txt"><h2>${esc(dayTitle(d))}${hint ? `<em>${hint}</em>` : ""}</h2>
+              <span class="day-sum num">${allDay.length} order${allDay.length === 1 ? "" : "s"} · ${nu(total)}${status}</span></span>
+            </button>${action}</div>
+          ${open ? `<div class="list">${items.map(card).join("")}</div>` : ""}</section>`;
       }).join("");
     }
     const searchVal = ui.q;
@@ -577,6 +614,11 @@ section.rep h2 { font: 700 17px var(--f-display); margin: 0 0 8px; }
       saveOrder(setStatus(o, b.dataset.s)).catch(() => {});
     }
     else if (act === "dayorder") cartSheet(b.dataset.day);
+    else if (act === "day") {
+      const d = b.dataset.day;
+      ui.days[d] = !(ui.days[d] ?? daysSince(d) === 0);
+      saveDays(); render();
+    }
     else if (act === "copy" && o) copyLabel(o);
     else if (act === "delivery" && o) deliverySheet(o);
     else if (act === "edit" && o) { ui.editId = o.id; location.hash = "add"; render(); }

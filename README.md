@@ -6,7 +6,7 @@ The whole app is one file, `index.html`. It runs as a Claude artifact. That keep
 
 ## Screens
 
-- **Orders**: grouped by order date, newest day first. Filters: Active, To order, Late, No cost, All, plus search.
+- **Orders**: one line per day ("Orders of 07 Nov · 4 orders · Nu. 3,600", with to-order / late / all-delivered tags), newest first. Today is open; tap any day to open or close it (remembered on that phone). Filters and search open every day. Filters: Active, To order, Late, No cost, All, plus search.
   - Tap a step (Paid, Ordered 💵, Arrived, Delivered) to set an order's status. Going back clears the later dates.
   - **Place Shein order 💵** on a day header opens the cart step. Tick the orders that went into one Shein checkout (that day's are ticked; older unordered ones can be added), enter the total paid in Baht and, optionally, the Shein order number. Item prices already entered on an order are filled in. With no total typed, each order keeps its own item price and the cart total is their sum. A typed total (for shipping or discounts) is split across the ticked orders by item price when every one has one, otherwise by what each customer paid. The ticked orders move to Ordered with their cost filled in.
   - Ordered parcels show "Day N of 8–10". Once more than 10 days have passed since ordering, they show **Late**.
