@@ -129,10 +129,22 @@ nav.tabs a.add-tab span.plus svg { width: 20px; height: 20px; }
 /* Order card */
 .order { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; }
 .order.is-late { border-color: var(--late); }
-.o-main { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; width: 100%; text-align: left; background: none; border: 0; padding: 12px 14px 10px; }
-.o-who { font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
-.o-who span { color: var(--muted); font-weight: 500; }
-.o-price { font: 700 16px var(--f-display); text-align: right; }
+.o-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px 0 10px; }
+.uname {
+  display: inline-flex; align-items: center; gap: 2px; min-width: 0; max-width: 100%;
+  background: var(--sunk); border: 1px solid transparent; border-radius: 9px; padding: 6px 6px 6px 10px; font-weight: 700; font-size: 16px;
+}
+.uname:active { border-color: var(--accent); }
+.u-at { color: var(--muted); }
+.u-name { min-width: 0; overflow-wrap: anywhere; text-align: left; }
+.u-copy { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; padding: 3px 8px; border-radius: 6px; background: var(--accent); color: var(--accent-ink); font-size: 12px; font-weight: 700; flex: none; }
+.u-copy svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.uname.copied .u-copy { background: var(--ok); color: var(--surface); }
+.o-main { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; width: 100%; text-align: left; background: none; border: 0; padding: 6px 14px 10px; }
+.o-who { font-weight: 600; min-width: 0; overflow-wrap: anywhere; grid-column: 1; grid-row: 1; }
+.o-main .o-tags { grid-column: 2; grid-row: 1; }
+.o-main .o-item { grid-column: 1 / -1; grid-row: 2; }
+.o-price { font: 700 16px var(--f-display); text-align: right; white-space: nowrap; }
 .o-item { color: var(--muted); min-width: 0; overflow-wrap: anywhere; }
 .o-tags { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; align-items: center; }
 .tag { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 6px; white-space: nowrap; letter-spacing: .02em; }
@@ -555,9 +567,15 @@ section.rep h2 { font: 700 17px var(--f-display); margin: 0 0 8px; }
     const loss = hasCost(o) && Number(o.cost) > Number(o.price);
     const tags = [statusTag(o), o.delivery ? `<span class="tag moved">New address</span>` : "", loss ? `<span class="tag loss">Loss</span>` : ""].join("");
     return `<article class="order s-${o.status} ${isLate(o) ? "is-late" : ""}">
-      <button class="o-main" data-act="toggle" data-id="${o.id}" aria-expanded="${open}">
-        <span class="o-who">@${esc(handle(o.tiktok))} <span>· ${esc(ship(o).name)}</span></span>
+      <div class="o-top">
+        <button class="uname" data-act="copyuser" data-id="${o.id}" aria-label="Copy TikTok username ${esc(handle(o.tiktok))}">
+          <span class="u-at">@</span><span class="u-name">${esc(handle(o.tiktok))}</span>
+          <span class="u-copy"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span class="u-lbl">Copy</span></span>
+        </button>
         <span class="o-price num">${nu(o.price)}</span>
+      </div>
+      <button class="o-main" data-act="toggle" data-id="${o.id}" aria-expanded="${open}">
+        <span class="o-who">${esc(ship(o).name)}</span>
         <span class="o-item">${esc(o.item)}</span>
         <span class="o-tags">${tags}</span>
       </button>
@@ -631,6 +649,15 @@ section.rep h2 { font: 700 17px var(--f-display); margin: 0 0 8px; }
       saveDays(); render();
     }
     else if (act === "copy" && o) copyLabel(o);
+    else if (act === "copyuser" && o) {
+      const name = handle(o.tiktok);
+      const done = () => {
+        toast(`Copied ${name}. Paste it in TikTok search.`);
+        b.classList.add("copied"); b.querySelector(".u-lbl").textContent = "Copied";
+        setTimeout(() => { b.classList.remove("copied"); const l = b.querySelector(".u-lbl"); if (l) l.textContent = "Copy"; }, 1800);
+      };
+      copyText(name, "Copy username", done);
+    }
     else if (act === "delivery" && o) deliverySheet(o);
     else if (act === "edit" && o) { ui.editId = o.id; location.hash = "add"; render(); }
     else if (act === "delete" && o) {
@@ -677,17 +704,18 @@ section.rep h2 { font: 700 17px var(--f-display); margin: 0 0 8px; }
     const s = ship(o);
     return `Name: ${s.name}\nPhone: ${s.phone}\nAddress: ${s.address}\nItem: ${o.item}`;
   }
-  function copyLabel(o) {
-    const text = labelText(o);
+  // Copy text; if this phone blocks copying, show it selected so it can be copied by hand
+  function copyText(text, title, onDone) {
     const fallback = () => {
-      openSheet(`<h3>Copy for the package</h3><p class="sub">Select the text below and copy it.</p>
+      openSheet(`<h3>${esc(title)}</h3><p class="sub">Select the text below and copy it.</p>
         <textarea class="copy" id="copy-text" readonly>${esc(text)}</textarea>
         <div class="row" style="margin-top:12px"><button class="btn" data-act="close">Done</button></div>`);
       const t = $("#copy-text"); t.focus(); t.select();
     };
-    try {
-      navigator.clipboard.writeText(text).then(() => toast("Copied name, number, address and item"), fallback);
-    } catch { fallback(); }
+    try { navigator.clipboard.writeText(text).then(onDone, fallback); } catch { fallback(); }
+  }
+  function copyLabel(o) {
+    copyText(labelText(o), "Copy for the package", () => toast("Copied name, number, address and item"));
   }
 
   // ---------- sheets ----------
