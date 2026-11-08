@@ -116,6 +116,9 @@ nav.tabs a.add-tab span.plus svg { width: 20px; height: 20px; }
 .ds.wait { background: var(--gold-soft); color: var(--gold); }
 .ds.late { background: var(--late-soft); color: var(--late); }
 .ds.ok { background: var(--ok-soft); color: var(--ok); }
+.ds.info { background: var(--gold-soft); color: var(--gold); }
+.ds.go { background: var(--info-soft); color: var(--info); }
+.ds.wait { background: var(--sunk); color: var(--ink); }
 .btn-day {
   border: 0; background: var(--gold-soft); color: var(--gold); font-weight: 700; font-size: 13px;
   padding: 7px 12px; border-radius: 8px;
@@ -466,6 +469,8 @@ section.rep h2 { font: 700 17px var(--f-display); margin: 0 0 8px; }
       if (ui.filter === "active" && o.status === "delivered") return false;
       if (ui.filter === "late" && !isLate(o)) return false;
       if (ui.filter === "topay" && o.status !== "paid") return false;
+      if (ui.filter === "waiting" && o.status !== "ordered") return false;
+      if (ui.filter === "deliver" && o.status !== "arrived") return false;
       if (ui.filter === "nocost" && hasCost(o)) return false;
       if (q) {
         const s = ship(o);
@@ -482,11 +487,13 @@ section.rep h2 { font: 700 17px var(--f-display); margin: 0 0 8px; }
     const counts = {
       active: orders.filter((o) => o.status !== "delivered").length,
       topay: orders.filter((o) => o.status === "paid").length,
+      waiting: orders.filter((o) => o.status === "ordered").length,
+      deliver: orders.filter((o) => o.status === "arrived").length,
       late: orders.filter(isLate).length,
       nocost: orders.filter((o) => !hasCost(o)).length,
       all: orders.length,
     };
-    const chips = [["active", "Active"], ["topay", "To order"], ["late", "Late"], ["nocost", "No cost"], ["all", "All"]]
+    const chips = [["active", "Active"], ["topay", "To order"], ["waiting", "Not arrived"], ["late", "Late"], ["deliver", "To deliver"], ["nocost", "No cost"], ["all", "All"]]
       .map(([k, l]) => `<button class="chip" data-act="filter" data-f="${k}" aria-pressed="${ui.filter === k}">${l}<span class="n num">${counts[k]}</span></button>`).join("");
 
     const list = filtered();
@@ -507,12 +514,16 @@ section.rep h2 { font: 700 17px var(--f-display); margin: 0 0 8px; }
         const allDay = orders.filter((o) => o.date === d);
         const toOrder = allDay.filter((o) => o.status === "paid").length;
         const late = allDay.filter(isLate).length;
+        const waiting = allDay.filter((o) => o.status === "ordered").length - late;
+        const toDeliver = allDay.filter((o) => o.status === "arrived").length;
         const delivered = allDay.filter((o) => o.status === "delivered").length;
         const total = allDay.reduce((s, o) => s + (Number(o.price) || 0), 0);
         const open = forceOpen || (ui.days[d] ?? daysSince(d) === 0);
         const status = [
           toOrder ? `<span class="ds wait">${toOrder} to order</span>` : "",
+          waiting ? `<span class="ds info">${waiting} not arrived</span>` : "",
           late ? `<span class="ds late">${late} late</span>` : "",
+          toDeliver ? `<span class="ds go">${toDeliver} to deliver</span>` : "",
           delivered === allDay.length ? `<span class="ds ok">All delivered</span>` : "",
         ].join("");
         const hint = dayHint(d);
