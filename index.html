@@ -1,0 +1,757 @@
+<title>SOMA Pre-orders</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one narrow phone column, sticky brand header, day-grouped order cards, fixed bottom tab bar. */
+:root {
+  --bg: #f2f5f3;
+  --surface: #ffffff;
+  --sunk: #e8eeea;
+  --ink: #16221e;
+  --muted: #5b6a64;
+  --line: #d9e1dc;
+  --accent: #0e6a5a;
+  --accent-ink: #ffffff;
+  --gold: #a86a12;
+  --gold-soft: #f7ead2;
+  --info: #2a5f9e;
+  --info-soft: #e1ebf7;
+  --ok: #2c7a35;
+  --ok-soft: #e0f0e1;
+  --late: #c03d0b;
+  --late-soft: #fbe5da;
+  --shadow: 0 1px 2px rgba(22, 34, 30, .06), 0 4px 14px rgba(22, 34, 30, .05);
+  --f-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Figtree", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --tabbar: 64px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1513; --surface: #16201c; --sunk: #1d2925; --ink: #e4ebe7; --muted: #92a39b; --line: #27342f;
+    --accent: #43b89f; --accent-ink: #04201a; --gold: #e3aa4a; --gold-soft: #33280f; --info: #82b3ec; --info-soft: #172739;
+    --ok: #75c47c; --ok-soft: #16301a; --late: #f28a5e; --late-soft: #3a1d12; --shadow: none; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1513; --surface: #16201c; --sunk: #1d2925; --ink: #e4ebe7; --muted: #92a39b; --line: #27342f;
+  --accent: #43b89f; --accent-ink: #04201a; --gold: #e3aa4a; --gold-soft: #33280f; --info: #82b3ec; --info-soft: #172739;
+  --ok: #75c47c; --ok-soft: #16301a; --late: #f28a5e; --late-soft: #3a1d12; --shadow: none; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font: 15px/1.45 var(--f-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 calc(var(--tabbar) + 24px + env(safe-area-inset-bottom, 0px));
+  -webkit-tap-highlight-color: transparent;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap { max-width: 560px; margin: 0 auto; }
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* Header */
+header.top {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg);
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 14px 10px;
+}
+.brand { display: flex; align-items: baseline; gap: 8px; }
+.brand b { font: 800 26px/1 var(--f-display); letter-spacing: .04em; }
+.brand span { color: var(--muted); font-size: 13px; }
+.sync { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.sync i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; }
+.sync.on i { background: var(--ok); }
+.sync.local i { background: var(--gold); }
+.banner { background: var(--gold-soft); color: var(--ink); border-radius: 10px; padding: 10px 12px; font-size: 13px; margin-bottom: 12px; }
+
+/* Tab bar */
+nav.tabs {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--surface); border-top: 1px solid var(--line);
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+nav.tabs a {
+  height: var(--tabbar); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  color: var(--muted); text-decoration: none; font-weight: 600; font-size: 12px;
+}
+nav.tabs a svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+nav.tabs a[aria-current="page"] { color: var(--accent); }
+nav.tabs a.add-tab span.plus {
+  width: 40px; height: 30px; border-radius: 15px; background: var(--accent); color: var(--accent-ink);
+  display: flex; align-items: center; justify-content: center;
+}
+nav.tabs a.add-tab span.plus svg { width: 20px; height: 20px; }
+
+/* Filters */
+.toolbar { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+.chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.chip {
+  border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 12px;
+  font-size: 13px; font-weight: 600; white-space: nowrap; color: var(--muted);
+}
+.chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.chip .n { opacity: .75; margin-left: 4px; }
+.search { width: 100%; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 9px 12px; }
+
+/* Day groups */
+.day { margin-bottom: 22px; }
+.day-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 0 2px 8px; }
+.day-head h2 { font: 700 17px/1.2 var(--f-display); margin: 0; }
+.day-head h2 small { font: 500 13px var(--f-body); color: var(--muted); margin-left: 6px; }
+.btn-day {
+  border: 0; background: var(--gold-soft); color: var(--gold); font-weight: 700; font-size: 13px;
+  padding: 7px 12px; border-radius: 8px;
+}
+.day-done { font-size: 12px; color: var(--muted); }
+.list { display: flex; flex-direction: column; gap: 8px; }
+
+/* Order card */
+.order { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; }
+.order.is-late { border-color: var(--late); }
+.o-main { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; width: 100%; text-align: left; background: none; border: 0; padding: 12px 14px 10px; }
+.o-who { font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
+.o-who span { color: var(--muted); font-weight: 500; }
+.o-price { font: 700 16px var(--f-display); text-align: right; }
+.o-item { color: var(--muted); min-width: 0; overflow-wrap: anywhere; }
+.o-tags { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; align-items: center; }
+.tag { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 6px; white-space: nowrap; letter-spacing: .02em; }
+.tag.late { background: var(--late-soft); color: var(--late); }
+.tag.wait { background: var(--gold-soft); color: var(--gold); }
+.tag.loss { background: var(--late-soft); color: var(--late); }
+.tag.moved { background: var(--info-soft); color: var(--info); }
+
+.steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 0 10px 10px; }
+.step {
+  border: 0; background: var(--sunk); color: var(--muted); border-radius: 7px; padding: 7px 2px; font-size: 12px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.step.done { color: var(--ink); }
+.s-paid .step.cur { background: var(--ink); color: var(--bg); }
+.s-ordered .step.done { background: var(--gold-soft); color: var(--gold); }
+.s-ordered .step.cur { background: var(--gold); color: var(--surface); }
+.s-arrived .step.done { background: var(--info-soft); color: var(--info); }
+.s-arrived .step.cur { background: var(--info); color: var(--surface); }
+.s-delivered .step.done { background: var(--ok-soft); color: var(--ok); }
+.s-delivered .step.cur { background: var(--ok); color: var(--surface); }
+
+.o-detail { border-top: 1px dashed var(--line); padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 12px; }
+.ship { background: var(--sunk); border-radius: 10px; padding: 10px 12px; display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: start; }
+.ship p { margin: 0; min-width: 0; overflow-wrap: anywhere; white-space: pre-line; }
+.ship .lbl { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; margin-bottom: 2px; }
+.orig { font-size: 13px; color: var(--muted); }
+.orig s { text-decoration-color: var(--muted); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.btn {
+  border: 1px solid var(--line); background: var(--surface); border-radius: 9px; padding: 8px 12px; font-weight: 600; font-size: 14px;
+}
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.danger { color: var(--late); }
+.btn.danger.arm { background: var(--late); border-color: var(--late); color: var(--surface); }
+.btn.small { padding: 6px 10px; font-size: 13px; }
+.cost-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cost-row label { font-weight: 600; font-size: 14px; }
+.money-in { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); overflow: hidden; }
+.money-in span { padding: 0 8px 0 10px; color: var(--muted); font-size: 14px; }
+.money-in input { border: 0; background: transparent; padding: 8px 10px 8px 0; width: 110px; outline: none; }
+.money-in:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
+.profit { font-size: 13px; font-weight: 700; }
+.profit.pos { color: var(--ok); } .profit.neg { color: var(--late); }
+.meta { font-size: 12px; color: var(--muted); }
+
+/* Empty */
+.empty { text-align: center; color: var(--muted); padding: 40px 12px; }
+.empty h3 { font: 700 18px var(--f-display); color: var(--ink); margin: 0 0 6px; }
+
+/* Forms */
+h1.view-title { font: 800 22px/1.2 var(--f-display); margin: 4px 0 14px; text-wrap: balance; }
+form.stack { display: flex; flex-direction: column; gap: 14px; }
+.field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.field label { font-weight: 600; font-size: 14px; }
+.field input, .field textarea {
+  border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 11px 12px; width: 100%; font-size: 16px;
+}
+.field textarea { resize: vertical; min-height: 74px; }
+.field .hint { font-size: 12px; color: var(--muted); }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.at { position: relative; }
+.at::before { content: "@"; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.at input { padding-left: 28px; }
+.suggest { background: var(--info-soft); color: var(--ink); border-radius: 10px; padding: 10px 12px; font-size: 14px; display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.edit-note { background: var(--info-soft); border-radius: 10px; padding: 10px 12px; font-size: 14px; }
+
+/* Report */
+.periods { margin-bottom: 14px; }
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+.tile .k { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
+.tile .v { font: 800 22px/1.2 var(--f-display); margin-top: 4px; overflow-wrap: anywhere; }
+.tile .v.pos { color: var(--ok); } .tile .v.neg { color: var(--late); }
+.tile.wide { grid-column: 1 / -1; }
+.note { font-size: 13px; color: var(--muted); margin: 0 0 20px; }
+.note button { border: 0; background: none; color: var(--accent); font-weight: 700; padding: 0; text-decoration: underline; }
+section.rep { margin-bottom: 22px; }
+section.rep h2 { font: 700 17px var(--f-display); margin: 0 0 8px; }
+.tbl { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.tr { display: grid; grid-template-columns: 28px 1fr auto auto; gap: 10px; padding: 10px 12px; align-items: center; border-top: 1px solid var(--line); }
+.tr:first-child { border-top: 0; }
+.tr .rk { font: 800 15px var(--f-display); color: var(--muted); }
+.tr .nm { min-width: 0; overflow-wrap: anywhere; font-weight: 600; }
+.tr .nm small { display: block; font-weight: 400; color: var(--muted); }
+.tr .c { color: var(--muted); font-size: 13px; text-align: right; }
+.tr .t { font-weight: 700; text-align: right; }
+.lose { grid-template-columns: 1fr auto; }
+.pipe { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.pipe div { border-radius: 10px; padding: 10px; text-align: center; background: var(--sunk); }
+.pipe b { display: block; font: 800 20px var(--f-display); }
+.pipe span { font-size: 12px; color: var(--muted); font-weight: 600; }
+
+/* Sheet + toast */
+.scrim { position: fixed; inset: 0; background: rgba(0, 0, 0, .45); z-index: 20; display: flex; align-items: flex-end; justify-content: center; }
+.sheet {
+  background: var(--bg); width: 100%; max-width: 560px; border-radius: 16px 16px 0 0; max-height: 92%; overflow-y: auto;
+  padding: 18px max(16px, env(safe-area-inset-right, 0px)) calc(20px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+}
+.sheet h3 { font: 700 19px var(--f-display); margin: 0 0 4px; }
+.sheet p.sub { color: var(--muted); margin: 0 0 14px; font-size: 14px; }
+.sheet textarea.copy { width: 100%; min-height: 130px; border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: var(--surface); font-size: 15px; }
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--tabbar) + 14px + env(safe-area-inset-bottom, 0px));
+  background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-weight: 600; font-size: 14px; z-index: 30;
+  max-width: calc(100% - 32px); text-align: center;
+}
+.toast.err { background: var(--late); color: var(--surface); }
+@media (prefers-reduced-motion: no-preference) {
+  .toast { animation: up .18s ease-out; }
+  @keyframes up { from { opacity: 0; transform: translate(-50%, 8px); } }
+}
+@media (max-width: 360px) { .two { grid-template-columns: 1fr; } .step { font-size: 11px; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><b>SOMA</b><span>pre-orders</span></div>
+    <div class="sync" id="sync"><i></i><span>Connecting…</span></div>
+  </header>
+  <div id="banner"></div>
+  <main id="view"></main>
+</div>
+
+<nav class="tabs" aria-label="Main">
+  <a href="#orders" data-tab="orders">
+    <svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Orders
+  </a>
+  <a href="#add" data-tab="add" class="add-tab">
+    <span class="plus"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span>Add
+  </a>
+  <a href="#report" data-tab="report">
+    <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Report
+  </a>
+</nav>
+<div id="layer"></div>
+
+<script>
+(() => {
+  "use strict";
+  const LATE_DAYS = 10;
+  const STEPS = [["paid", "Paid"], ["ordered", "Ordered 💵"], ["arrived", "Arrived"], ["delivered", "Delivered"]];
+  const STEP_IDX = Object.fromEntries(STEPS.map(([k], i) => [k, i]));
+
+  // ---------- state ----------
+  let orders = [];
+  let loaded = false;
+  let store = null;
+  const ui = { filter: "active", q: "", open: new Set(), period: "month", editId: null, armDelete: null };
+
+  // ---------- helpers ----------
+  const $ = (s, r = document) => r.querySelector(s);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const nu = (n) => "Nu. " + Math.round(Number(n) || 0).toLocaleString("en-IN");
+  const signedNu = (n) => (n < 0 ? "−" : "") + nu(Math.abs(n));
+  const pad = (n) => String(n).padStart(2, "0");
+  const today = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+  const dayNum = (s) => { const [y, m, d] = s.split("-").map(Number); return Date.UTC(y, m - 1, d) / 864e5; };
+  const daysSince = (s) => (s ? dayNum(today()) - dayNum(s) : 0);
+  const fmtDay = (s) => {
+    const diff = daysSince(s);
+    const [y, m, d] = s.split("-").map(Number);
+    const dt = new Date(y, m - 1, d);
+    const label = dt.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+    if (diff === 0) return "Today · " + label;
+    if (diff === 1) return "Yesterday · " + label;
+    return label + (y !== new Date().getFullYear() ? " " + y : "");
+  };
+  const shortDay = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-GB", { day: "numeric", month: "short" }); };
+  const handle = (t) => String(t || "").trim().replace(/^@+/, "");
+  const ship = (o) => o.delivery || { name: o.name, phone: o.phone, address: o.address };
+  const hasCost = (o) => o.cost !== null && o.cost !== undefined && o.cost !== "";
+  const isLate = (o) => o.status === "ordered" && daysSince(o.orderedAt) > LATE_DAYS;
+
+  let toastTimer;
+  function toast(msg, err) {
+    const el = document.createElement("div");
+    el.className = "toast" + (err ? " err" : "");
+    el.textContent = msg;
+    document.querySelectorAll(".toast").forEach((t) => t.remove());
+    document.body.appendChild(el);
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.remove(), 2600);
+  }
+
+  // ---------- storage ----------
+  const queues = new Map(); // one write at a time per order
+  function enqueue(id, fn) {
+    const prev = queues.get(id) || Promise.resolve();
+    const next = prev.catch(() => {}).then(fn);
+    queues.set(id, next);
+    return next;
+  }
+  function saveOrder(o) {
+    const i = orders.findIndex((x) => x.id === o.id);
+    if (i >= 0) orders[i] = o; else orders.push(o);
+    render();
+    return enqueue(o.id, () => store.save(o)).catch((e) => {
+      toast(e && e.code === "quota_exceeded" ? "Storage is full. Delete old delivered orders." : "Could not save. Check your connection and try again.", true);
+      throw e;
+    });
+  }
+  function removeOrder(id) {
+    orders = orders.filter((o) => o.id !== id);
+    render();
+    return enqueue(id, () => store.remove(id)).catch(() => toast("Could not delete. Try again.", true));
+  }
+
+  function localStore() {
+    const KEY = "soma-orders-v1";
+    try { orders = JSON.parse(localStorage.getItem(KEY) || "[]"); } catch { orders = []; }
+    const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(orders)); } catch {} return Promise.resolve(); };
+    return { mode: "local", newId: () => "o" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7), save: persist, remove: persist };
+  }
+
+  function setSync(mode, text) {
+    const el = $("#sync");
+    el.className = "sync " + mode;
+    el.querySelector("span").textContent = text;
+  }
+
+  async function initStore() {
+    let db = null;
+    try { db = window.claude && window.claude.use ? await window.claude.use("db") : null; } catch { db = null; }
+    if (!db) {
+      store = localStore();
+      loaded = true;
+      setSync("local", "This phone only");
+      $("#banner").innerHTML = `<div class="banner">Orders are saved on this phone only. Open the shared SOMA link while signed in to keep them online for every phone.</div>`;
+      render();
+      return;
+    }
+    const col = db.collection("orders");
+    store = {
+      mode: "online",
+      newId: () => col.doc().id,
+      save: (o) => { const { id, ...data } = o; return col.doc(id).set(data); },
+      remove: (id) => col.doc(id).delete(),
+    };
+    const slow = setTimeout(() => { if (!loaded) setSync("", "Still connecting…"); }, 10000);
+    col.onSnapshot(
+      (snap) => {
+        clearTimeout(slow);
+        orders = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        loaded = true;
+        setSync("on", snap.metadata.fromCache ? "Syncing…" : "Saved online");
+        render();
+      },
+      (e) => {
+        clearTimeout(slow);
+        setSync("", e.code === "revoked" ? "Read only" : "Offline");
+        if (e.code !== "revoked") toast("Lost connection to saved orders. Reopen the page.", true);
+      }
+    );
+  }
+
+  // ---------- routing ----------
+  const route = () => { const h = location.hash.slice(1); return ["orders", "add", "report"].includes(h) ? h : "orders"; };
+  window.addEventListener("hashchange", () => { if (route() !== "add") ui.editId = null; render(); window.scrollTo(0, 0); });
+
+  function render() {
+    const r = route();
+    document.querySelectorAll("nav.tabs a").forEach((a) => { if (a.dataset.tab === r) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+    if (r === "add") { if (!$("#order-form") || $("#order-form").dataset.edit !== String(ui.editId || "")) renderForm(); return; }
+    if (r === "report") return renderReport();
+    renderOrders();
+  }
+
+  // ---------- orders view ----------
+  function filtered() {
+    const q = ui.q.trim().toLowerCase().replace(/^@/, "");
+    return orders.filter((o) => {
+      if (ui.filter === "active" && o.status === "delivered") return false;
+      if (ui.filter === "late" && !isLate(o)) return false;
+      if (ui.filter === "topay" && o.status !== "paid") return false;
+      if (ui.filter === "nocost" && hasCost(o)) return false;
+      if (q) {
+        const s = ship(o);
+        const hay = [o.tiktok, o.name, o.phone, o.item, s.name, s.phone].join(" ").toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }
+
+  function renderOrders() {
+    const view = $("#view");
+    if (!loaded) { view.innerHTML = `<div class="empty"><h3>Loading orders…</h3><p>Your saved orders will appear here, grouped by day.</p></div>`; return; }
+    const counts = {
+      active: orders.filter((o) => o.status !== "delivered").length,
+      topay: orders.filter((o) => o.status === "paid").length,
+      late: orders.filter(isLate).length,
+      nocost: orders.filter((o) => !hasCost(o)).length,
+      all: orders.length,
+    };
+    const chips = [["active", "Active"], ["topay", "To order"], ["late", "Late"], ["nocost", "No cost"], ["all", "All"]]
+      .map(([k, l]) => `<button class="chip" data-act="filter" data-f="${k}" aria-pressed="${ui.filter === k}">${l}<span class="n num">${counts[k]}</span></button>`).join("");
+
+    const list = filtered();
+    const byDay = new Map();
+    list.forEach((o) => { if (!byDay.has(o.date)) byDay.set(o.date, []); byDay.get(o.date).push(o); });
+    const days = [...byDay.keys()].sort().reverse();
+
+    let body;
+    if (!orders.length) {
+      body = `<div class="empty"><h3>No orders yet</h3><p>Orders you take on TikTok show up here, grouped by day.</p><p><a class="btn primary" href="#add" style="text-decoration:none;display:inline-block">Add the first order</a></p></div>`;
+    } else if (!list.length) {
+      body = `<div class="empty"><h3>Nothing here</h3><p>No orders match this filter.</p></div>`;
+    } else {
+      body = days.map((d) => {
+        const items = byDay.get(d).sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+        const allDay = orders.filter((o) => o.date === d);
+        const unpaidCount = allDay.filter((o) => o.status === "paid").length;
+        const total = allDay.reduce((s, o) => s + (Number(o.price) || 0), 0);
+        const action = unpaidCount
+          ? `<button class="btn-day" data-act="dayorder" data-day="${d}">Mark ${unpaidCount} ordered 💵</button>`
+          : `<span class="day-done">All ordered on Shein</span>`;
+        return `<section class="day"><div class="day-head"><h2>${esc(fmtDay(d))}<small class="num">${allDay.length} · ${nu(total)}</small></h2>${action}</div>
+          <div class="list">${items.map(card).join("")}</div></section>`;
+      }).join("");
+    }
+    const searchVal = ui.q;
+    view.innerHTML = `<div class="toolbar"><div class="chips">${chips}</div>
+      <input class="search" id="search" type="search" placeholder="Search username, name, phone or item" value="${esc(searchVal)}"></div>${body}`;
+  }
+
+  function statusTag(o) {
+    if (isLate(o)) return `<span class="tag late">Late · ${daysSince(o.orderedAt)} days</span>`;
+    if (o.status === "ordered") return `<span class="tag wait num">Day ${daysSince(o.orderedAt)} of 8–10</span>`;
+    return "";
+  }
+
+  function card(o) {
+    const open = ui.open.has(o.id);
+    const idx = STEP_IDX[o.status] ?? 0;
+    const steps = STEPS.map(([k, l], i) => `<button class="step ${i < idx ? "done" : ""} ${i === idx ? "cur done" : ""}" data-act="step" data-id="${o.id}" data-s="${k}" aria-pressed="${i === idx}">${l}</button>`).join("");
+    const loss = hasCost(o) && Number(o.cost) > Number(o.price);
+    const tags = [statusTag(o), o.delivery ? `<span class="tag moved">New address</span>` : "", loss ? `<span class="tag loss">Loss</span>` : ""].join("");
+    return `<article class="order s-${o.status} ${isLate(o) ? "is-late" : ""}">
+      <button class="o-main" data-act="toggle" data-id="${o.id}" aria-expanded="${open}">
+        <span class="o-who">@${esc(handle(o.tiktok))} <span>· ${esc(ship(o).name)}</span></span>
+        <span class="o-price num">${nu(o.price)}</span>
+        <span class="o-item">${esc(o.item)}</span>
+        <span class="o-tags">${tags}</span>
+      </button>
+      <div class="steps">${steps}</div>
+      ${open ? detail(o) : ""}
+    </article>`;
+  }
+
+  function detail(o) {
+    const s = ship(o);
+    const orig = o.delivery
+      ? `<div class="orig">Original: <s>${esc(o.name)}, ${esc(o.phone)}, ${esc(o.address)}</s></div>` : "";
+    const profit = hasCost(o) ? Number(o.price) - Number(o.cost) : null;
+    const dates = [
+      `Taken ${shortDay(o.date)}`,
+      o.orderedAt ? `ordered ${shortDay(o.orderedAt)}` : "",
+      o.arrivedAt ? `arrived ${shortDay(o.arrivedAt)}` : "",
+      o.deliveredAt ? `delivered ${shortDay(o.deliveredAt)}` : "",
+    ].filter(Boolean).join(" · ");
+    const armed = ui.armDelete === o.id;
+    return `<div class="o-detail">
+      <div class="ship">
+        <p><span class="lbl">Deliver to</span>${esc(s.name)}\n${esc(s.phone)}\n${esc(s.address)}</p>
+        <button class="btn small primary" data-act="copy" data-id="${o.id}">Copy</button>
+      </div>
+      ${orig}
+      <div class="cost-row">
+        <label for="cost-${o.id}">Shein cost</label>
+        <div class="money-in"><span>Nu.</span><input id="cost-${o.id}" class="num" type="number" inputmode="decimal" min="0" step="any" data-act="cost" data-id="${o.id}" value="${hasCost(o) ? esc(o.cost) : ""}" placeholder="0"></div>
+        ${profit === null ? `<span class="meta">Add later</span>` : `<span class="profit num ${profit < 0 ? "neg" : "pos"}">Profit ${signedNu(profit)}</span>`}
+      </div>
+      <div class="row">
+        <button class="btn small" data-act="delivery" data-id="${o.id}">Change delivery</button>
+        <button class="btn small" data-act="edit" data-id="${o.id}">Edit order</button>
+        <button class="btn small danger ${armed ? "arm" : ""}" data-act="delete" data-id="${o.id}">${armed ? "Tap again to delete" : "Delete"}</button>
+      </div>
+      <div class="meta">${esc(dates)} · contact ${esc(o.phone)}</div>
+    </div>`;
+  }
+
+  function setStatus(o, s) {
+    const n = { ...o, status: s };
+    const t = today();
+    const idx = STEP_IDX[s];
+    n.orderedAt = idx >= 1 ? o.orderedAt || t : null;
+    n.arrivedAt = idx >= 2 ? o.arrivedAt || t : null;
+    n.deliveredAt = idx >= 3 ? o.deliveredAt || t : null;
+    return n;
+  }
+
+  // ---------- events ----------
+  document.addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-act]");
+    if (!b || b.tagName === "INPUT") return;
+    const act = b.dataset.act;
+    const o = orders.find((x) => x.id === b.dataset.id);
+    if (act !== "delete") ui.armDelete = null;
+
+    if (act === "filter") { ui.filter = b.dataset.f; render(); }
+    else if (act === "toggle" && o) { ui.open.has(o.id) ? ui.open.delete(o.id) : ui.open.add(o.id); render(); }
+    else if (act === "step" && o) {
+      if (o.status === b.dataset.s) return;
+      saveOrder(setStatus(o, b.dataset.s)).catch(() => {});
+    }
+    else if (act === "dayorder") {
+      const list = orders.filter((x) => x.date === b.dataset.day && x.status === "paid");
+      list.forEach((x) => saveOrder(setStatus(x, "ordered")).catch(() => {}));
+      toast(`${list.length} order${list.length === 1 ? "" : "s"} marked as ordered on Shein`);
+    }
+    else if (act === "copy" && o) copyLabel(o);
+    else if (act === "delivery" && o) deliverySheet(o);
+    else if (act === "edit" && o) { ui.editId = o.id; location.hash = "add"; render(); }
+    else if (act === "delete" && o) {
+      if (ui.armDelete === o.id) { ui.armDelete = null; ui.open.delete(o.id); removeOrder(o.id); toast("Order deleted"); }
+      else { ui.armDelete = o.id; render(); setTimeout(() => { if (ui.armDelete === o.id) { ui.armDelete = null; render(); } }, 3500); }
+    }
+    else if (act === "period") { ui.period = b.dataset.p; render(); }
+    else if (act === "show-nocost") { ui.filter = "nocost"; location.hash = "orders"; }
+    else if (act === "close") closeSheet();
+  });
+
+  document.addEventListener("input", (e) => {
+    if (e.target.id === "search") {
+      ui.q = e.target.value;
+      const pos = e.target.selectionStart;
+      renderOrders();
+      const s = $("#search"); s.focus(); try { s.setSelectionRange(pos, pos); } catch {}
+    }
+  });
+
+  document.addEventListener("change", (e) => {
+    const el = e.target;
+    if (el.dataset.act === "cost") {
+      const o = orders.find((x) => x.id === el.dataset.id);
+      if (!o) return;
+      const v = el.value.trim() === "" ? null : Number(el.value);
+      if (v !== null && (!isFinite(v) || v < 0)) { toast("Enter the cost as a number, like 850", true); return; }
+      if ((o.cost ?? null) === v) return;
+      saveOrder({ ...o, cost: v }).then(() => toast(v === null ? "Cost cleared" : "Cost saved")).catch(() => {});
+    }
+  });
+
+  // ---------- copy ----------
+  function labelText(o) {
+    const s = ship(o);
+    return `Name: ${s.name}\nPhone: ${s.phone}\nAddress: ${s.address}\nItem: ${o.item}`;
+  }
+  function copyLabel(o) {
+    const text = labelText(o);
+    const fallback = () => {
+      openSheet(`<h3>Copy for the package</h3><p class="sub">Select the text below and copy it.</p>
+        <textarea class="copy" id="copy-text" readonly>${esc(text)}</textarea>
+        <div class="row" style="margin-top:12px"><button class="btn" data-act="close">Done</button></div>`);
+      const t = $("#copy-text"); t.focus(); t.select();
+    };
+    try {
+      navigator.clipboard.writeText(text).then(() => toast("Copied name, number, address and item"), fallback);
+    } catch { fallback(); }
+  }
+
+  // ---------- sheets ----------
+  function openSheet(html) {
+    $("#layer").innerHTML = `<div class="scrim" id="scrim"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;
+    $("#scrim").addEventListener("click", (e) => { if (e.target.id === "scrim") closeSheet(); });
+  }
+  function closeSheet() { $("#layer").innerHTML = ""; }
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSheet(); });
+
+  function deliverySheet(o) {
+    const s = ship(o);
+    openSheet(`<h3>Change delivery</h3>
+      <p class="sub">The original details from @${esc(handle(o.tiktok))} are kept: ${esc(o.name)}, ${esc(o.phone)}, ${esc(o.address)}.</p>
+      <form class="stack" id="dl-form">
+        <div class="field"><label for="dl-name">Deliver to (name)</label><input id="dl-name" required value="${esc(s.name)}"></div>
+        <div class="field"><label for="dl-phone">Contact number</label><input id="dl-phone" type="tel" inputmode="tel" required value="${esc(s.phone)}"></div>
+        <div class="field"><label for="dl-address">Address</label><textarea id="dl-address" required>${esc(s.address)}</textarea></div>
+        <div class="row">
+          <button class="btn primary" type="submit">Save delivery</button>
+          ${o.delivery ? `<button class="btn" type="button" id="dl-reset">Use original</button>` : ""}
+          <button class="btn" type="button" data-act="close">Cancel</button>
+        </div>
+      </form>`);
+    $("#dl-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const d = { name: $("#dl-name").value.trim(), phone: $("#dl-phone").value.trim(), address: $("#dl-address").value.trim() };
+      const same = d.name === o.name && d.phone === o.phone && d.address === o.address;
+      closeSheet();
+      saveOrder({ ...o, delivery: same ? null : { ...d, changedAt: today() } }).then(() => toast(same ? "Back to original details" : "Delivery details changed")).catch(() => {});
+    });
+    const r = $("#dl-reset");
+    if (r) r.addEventListener("click", () => { closeSheet(); saveOrder({ ...o, delivery: null }).then(() => toast("Back to original details")).catch(() => {}); });
+  }
+
+  // ---------- add / edit form ----------
+  function customers() {
+    const map = new Map();
+    [...orders].sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt))).forEach((o) => {
+      map.set(handle(o.tiktok).toLowerCase(), o);
+    });
+    return map;
+  }
+
+  function renderForm() {
+    const editing = ui.editId ? orders.find((o) => o.id === ui.editId) : null;
+    const o = editing || { tiktok: "", name: "", phone: "", address: "", item: "", price: "", date: today(), cost: null };
+    const names = [...customers().values()].map((c) => `<option value="${esc(handle(c.tiktok))}"></option>`).join("");
+    $("#view").innerHTML = `
+      <h1 class="view-title">${editing ? "Edit order" : "New order"}</h1>
+      ${editing ? `<div class="edit-note">Editing @${esc(handle(o.tiktok))}'s order. To change only where it goes, use <b>Change delivery</b> on the order instead so the original is kept.</div>` : ""}
+      <form class="stack" id="order-form" data-edit="${esc(ui.editId || "")}" autocomplete="off">
+        <div class="field"><label for="f-tiktok">TikTok username</label>
+          <div class="at"><input id="f-tiktok" list="f-users" required autocapitalize="none" spellcheck="false" value="${esc(handle(o.tiktok))}" placeholder="username"></div>
+          <datalist id="f-users">${names}</datalist></div>
+        <div id="suggest"></div>
+        <div class="field"><label for="f-name">Customer name</label><input id="f-name" required value="${esc(o.name)}" autocomplete="off"></div>
+        <div class="field"><label for="f-phone">Contact number</label><input id="f-phone" type="tel" inputmode="tel" required value="${esc(o.phone)}"></div>
+        <div class="field"><label for="f-address">Address</label><textarea id="f-address" required>${esc(o.address)}</textarea></div>
+        <div class="field"><label for="f-item">Item</label><input id="f-item" required value="${esc(o.item)}" placeholder="e.g. Black ribbed knit top, size M"></div>
+        <div class="two">
+          <div class="field"><label for="f-price">Price paid (Nu.)</label><input id="f-price" class="num" type="number" inputmode="decimal" min="0" step="any" required value="${esc(o.price)}"></div>
+          <div class="field"><label for="f-date">Date</label><input id="f-date" type="date" required value="${esc(o.date)}"></div>
+        </div>
+        <div class="field"><label for="f-cost">Shein cost (Nu.), optional</label><input id="f-cost" class="num" type="number" inputmode="decimal" min="0" step="any" value="${hasCost(o) ? esc(o.cost) : ""}">
+          <span class="hint">You can add this later from the order.</span></div>
+        <div class="row">
+          <button class="btn primary" type="submit" style="flex:1;padding:12px">${editing ? "Save changes" : "Save order"}</button>
+          ${editing ? `<a class="btn" href="#orders" style="text-decoration:none">Cancel</a>` : ""}
+        </div>
+      </form>`;
+
+    const tk = $("#f-tiktok");
+    const suggest = () => {
+      const box = $("#suggest");
+      if (editing) return (box.innerHTML = "");
+      const c = customers().get(handle(tk.value).toLowerCase());
+      if (!c) return (box.innerHTML = "");
+      const s = ship(c);
+      box.innerHTML = `<div class="suggest"><span>Returning customer: ${esc(s.name)}, ${esc(s.phone)}</span><button type="button" class="btn small" id="fill">Fill details</button></div>`;
+      $("#fill").addEventListener("click", () => {
+        $("#f-name").value = s.name; $("#f-phone").value = s.phone; $("#f-address").value = s.address;
+        box.innerHTML = ""; $("#f-item").focus();
+      });
+    };
+    tk.addEventListener("input", suggest);
+
+    $("#order-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (!store) return toast("Still connecting. Try again in a moment.", true);
+      const price = Number($("#f-price").value);
+      const costRaw = $("#f-cost").value.trim();
+      const cost = costRaw === "" ? null : Number(costRaw);
+      if (!isFinite(price) || price < 0) return toast("Enter the price as a number, like 1200", true);
+      if (cost !== null && (!isFinite(cost) || cost < 0)) return toast("Enter the cost as a number, like 850", true);
+      const base = {
+        tiktok: handle(tk.value), name: $("#f-name").value.trim(), phone: $("#f-phone").value.trim(),
+        address: $("#f-address").value.trim(), item: $("#f-item").value.trim(), price, cost, date: $("#f-date").value,
+      };
+      if (editing) {
+        saveOrder({ ...editing, ...base }).then(() => toast("Order updated")).catch(() => {});
+        ui.editId = null;
+        location.hash = "orders";
+      } else {
+        const o = { id: store.newId(), ...base, status: "paid", orderedAt: null, arrivedAt: null, deliveredAt: null, delivery: null, createdAt: new Date().toISOString() };
+        saveOrder(o).then(() => toast(`Saved @${o.tiktok}`)).catch(() => {});
+        const keepDate = base.date;
+        renderForm();
+        $("#f-date").value = keepDate;
+        $("#f-tiktok").focus();
+      }
+    });
+  }
+
+  // ---------- report ----------
+  function inPeriod(o) {
+    const t = today();
+    const ym = t.slice(0, 7);
+    if (ui.period === "month") return o.date.slice(0, 7) === ym;
+    if (ui.period === "last") {
+      const [y, m] = ym.split("-").map(Number);
+      const p = m === 1 ? `${y - 1}-12` : `${y}-${pad(m - 1)}`;
+      return o.date.slice(0, 7) === p;
+    }
+    return true;
+  }
+
+  function renderReport() {
+    const view = $("#view");
+    const periods = [["month", "This month"], ["last", "Last month"], ["all", "All time"]]
+      .map(([k, l]) => `<button class="chip" data-act="period" data-p="${k}" aria-pressed="${ui.period === k}">${l}</button>`).join("");
+    if (!loaded) { view.innerHTML = `<h1 class="view-title">Report</h1><div class="empty"><h3>Loading…</h3></div>`; return; }
+    const list = orders.filter(inPeriod);
+    const received = list.reduce((s, o) => s + (Number(o.price) || 0), 0);
+    const withCost = list.filter(hasCost);
+    const costSum = withCost.reduce((s, o) => s + Number(o.cost), 0);
+    const profit = withCost.reduce((s, o) => s + Number(o.price) - Number(o.cost), 0);
+    const missing = list.length - withCost.length;
+    const losing = withCost.filter((o) => Number(o.cost) > Number(o.price)).sort((a, b) => (Number(a.price) - Number(a.cost)) - (Number(b.price) - Number(b.cost)));
+
+    const cust = new Map();
+    list.forEach((o) => {
+      const k = handle(o.tiktok).toLowerCase();
+      const c = cust.get(k) || { tiktok: handle(o.tiktok), name: o.name, n: 0, spent: 0 };
+      c.n += 1; c.spent += Number(o.price) || 0; c.name = o.name;
+      cust.set(k, c);
+    });
+    const best = [...cust.values()].sort((a, b) => b.spent - a.spent || b.n - a.n).slice(0, 5);
+    const pipe = STEPS.map(([k, l]) => `<div><b class="num">${list.filter((o) => o.status === k).length}</b><span>${l.replace(" 💵", "")}</span></div>`).join("");
+
+    view.innerHTML = `
+      <h1 class="view-title">Report</h1>
+      <div class="chips periods">${periods}</div>
+      ${!list.length ? `<div class="empty"><h3>No orders in this period</h3><p>Pick another period or add orders.</p></div>` : `
+      <div class="tiles">
+        <div class="tile wide"><div class="k">Money received</div><div class="v num">${nu(received)}</div></div>
+        <div class="tile"><div class="k">Shein cost</div><div class="v num">${nu(costSum)}</div></div>
+        <div class="tile"><div class="k">Profit</div><div class="v num ${profit < 0 ? "neg" : "pos"}">${signedNu(profit)}</div></div>
+      </div>
+      <p class="note">${list.length} orders. Profit counts the ${withCost.length} with a cost entered.
+        ${missing ? `<button data-act="show-nocost">${missing} still need a cost</button>.` : "Every order has a cost."}</p>
+
+      <section class="rep"><h2>Where orders are</h2><div class="pipe">${pipe}</div></section>
+
+      <section class="rep"><h2>Losing orders</h2>
+        ${losing.length ? `<div class="tbl">${losing.map((o) => `<div class="tr lose"><span class="nm">@${esc(handle(o.tiktok))} · ${esc(o.item)}<small class="num">${shortDay(o.date)} · paid ${nu(o.price)}, cost ${nu(o.cost)}</small></span><span class="t num" style="color:var(--late)">${signedNu(Number(o.price) - Number(o.cost))}</span></div>`).join("")}</div>`
+        : `<p class="note">No losing orders${missing ? " among orders with a cost" : ""}.</p>`}
+      </section>
+
+      <section class="rep"><h2>Best customers</h2>
+        <div class="tbl">${best.map((c, i) => `<div class="tr"><span class="rk num">${i + 1}</span><span class="nm">@${esc(c.tiktok)}<small>${esc(c.name)}</small></span><span class="c num">${c.n} order${c.n === 1 ? "" : "s"}</span><span class="t num">${nu(c.spent)}</span></div>`).join("")}</div>
+      </section>`}`;
+  }
+
+  // ---------- boot ----------
+  render();
+  initStore();
+})();
+</script>
