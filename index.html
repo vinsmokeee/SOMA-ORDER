@@ -689,7 +689,7 @@ section.rep h2 { font: 700 17px var(--f-display); margin: 0 0 8px; }
     const row = (o) => `<div class="cart-row">
         <input type="checkbox" id="ck-${o.id}" data-id="${o.id}" ${o.date === day ? "checked" : ""}>
         <label for="ck-${o.id}" class="cart-who"><b>@${esc(handle(o.tiktok))}</b> ${esc(o.item)}<small class="num">${o.date === day ? "" : esc(shortDay(o.date)) + " · "}sold ${nu(o.price)}</small></label>
-        <div class="money-in sm"><span>฿</span><input id="ib-${o.id}" class="num" type="number" inputmode="decimal" min="0" step="any" placeholder="item" aria-label="Shein item price in Baht for @${esc(handle(o.tiktok))}"></div>
+        <div class="money-in sm"><span>฿</span><input id="ib-${o.id}" class="num" type="number" inputmode="decimal" min="0" step="any" placeholder="item" value="${hasBaht(o) ? esc(o.costBaht) : ""}"aria-label="Shein item price in Baht for @${esc(handle(o.tiktok))}"></div>
         <div class="cart-out num" id="out-${o.id}"></div>
       </div>`;
     openSheet(`<h3>Place Shein order</h3>
@@ -706,23 +706,42 @@ section.rep h2 { font: 700 17px var(--f-display); margin: 0 0 8px; }
 
     const readRows = () => waiting.filter((o) => $("#ck-" + o.id).checked)
       .map((o) => ({ o, itemBaht: Number($("#ib-" + o.id).value) || 0 }));
+    // What each ticked order will cost in Baht (null = no cost yet), and the cart total to record.
+    // A typed total is split across the orders; with no total, each order uses its own item price.
+    const plan = (rows, total) => {
+      if (total !== null) { const s = splitCart(rows, total); return { costs: s.shares, total, mode: s.byItem ? "byItem" : "byPrice" }; }
+      const costs = rows.map((x) => (x.itemBaht > 0 ? x.itemBaht : null));
+      const all = costs.every((c) => c !== null);
+      return { costs, total: all ? Math.round(costs.reduce((s, c) => s + c, 0) * 100) / 100 : null, mode: all ? "sum" : costs.some((c) => c !== null) ? "some" : "none" };
+    };
     const update = () => {
       const rows = readRows();
       const total = readBaht($("#cart-total").value);
       const r = rate();
       waiting.forEach((o) => { $("#out-" + o.id).textContent = ""; });
+      const sumItems = rows.filter((x) => x.itemBaht > 0).reduce((s, x) => s + x.itemBaht, 0);
+      $("#cart-total").placeholder = sumItems ? `${Math.round(sumItems * 100) / 100} (items)` : "e.g. 500";
       let note;
       if (!rows.length) note = "Tick at least one order.";
-      else if (total === null) note = `Leave the total empty to add costs later. Rate ฿1 = Nu. ${fmtRate(r)}.`;
       else if (total === undefined) note = "Enter the total as a number, like 500.";
       else {
-        const { byItem, shares } = splitCart(rows, total);
+        const pl = plan(rows, total);
+        let cost = 0, sold = 0;
         rows.forEach((x, i) => {
-          const c = toNu(shares[i], r), p = Number(x.o.price) - c;
-          $("#out-" + x.o.id).innerHTML = `${baht(shares[i])} = ${nu(c)} · <span class="${p < 0 ? "neg" : "pos"}">profit ${signedNu(p)}</span>`;
+          sold += Number(x.o.price) || 0;
+          if (pl.costs[i] === null) { $("#out-" + x.o.id).textContent = "No cost yet"; return; }
+          const c = toNu(pl.costs[i], r), p = Number(x.o.price) - c;
+          cost += c;
+          $("#out-" + x.o.id).innerHTML = `${baht(pl.costs[i])} = ${nu(c)} · <span class="${p < 0 ? "neg" : "pos"}">profit ${signedNu(p)}</span>`;
         });
-        note = byItem ? `Split by the item prices you entered. Rate ฿1 = Nu. ${fmtRate(r)}.`
-          : `Split by what each customer paid. Enter every item's Shein price to split by those instead. Rate ฿1 = Nu. ${fmtRate(r)}.`;
+        const sum = pl.total !== null ? `Cart ${baht(pl.total)} = ${nu(cost)}. Sold for ${nu(sold)}, profit ${signedNu(sold - cost)}. ` : "";
+        note = sum + ({
+          byItem: "Total split by the item prices.",
+          byPrice: "Total split by what each customer paid. Enter every item's Shein price to split by those instead.",
+          sum: "Total is the item prices added up. If Shein charged a different total (shipping, discount), type it above.",
+          some: "Orders without an item price stay without a cost. You can add it later.",
+          none: "Enter item prices or the total, or leave both empty to add costs later.",
+        })[pl.mode] + ` Rate ฿1 = Nu. ${fmtRate(r)}.`;
       }
       $("#cart-note").textContent = note;
       $("#cart-go").textContent = rows.length ? `Mark ${rows.length} ordered 💵` : "Mark ordered";
@@ -739,12 +758,15 @@ section.rep h2 { font: 700 17px var(--f-display); margin: 0 0 8px; }
       if (total === undefined) return toast("Enter the total as a number, like 500", true);
       const r = rate();
       const no = $("#cart-no").value.trim();
-      const sheinOrder = { id: "c" + Date.now().toString(36), no: no || null, totalBaht: total, count: rows.length, placedAt: today() };
-      const shares = total === null ? null : splitCart(rows, total).shares;
+      const pl = plan(rows, total);
+      const sheinOrder = { id: "c" + Date.now().toString(36), no: no || null, totalBaht: pl.total, count: rows.length, placedAt: today() };
       closeSheet();
       rows.forEach((x, i) => {
         const n = { ...setStatus(x.o, "ordered"), sheinOrder };
-        if (shares) Object.assign(n, costFields(shares[i], r));
+        const c = pl.costs[i];
+        // Keep the rate an existing cost was saved with when the amount didn't change
+        if (c !== null) Object.assign(n, costFields(c, hasBaht(x.o) && x.o.costBaht === c ? x.o.rate : r));
+        else if (hasBaht(x.o)) Object.assign(n, costFields(null, r)); // item box was cleared
         saveOrder(n).catch(() => {});
       });
       toast(`${rows.length} order${rows.length === 1 ? "" : "s"} marked as ordered on Shein`);
