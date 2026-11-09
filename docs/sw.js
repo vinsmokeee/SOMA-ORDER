@@ -1,5 +1,5 @@
 // Offline support: keeps the app itself on the phone. Orders are stored offline by Firestore.
-const VERSION = "soma-d1f45f4863";
+const VERSION = "soma-132cfb2392";
 const SHELL = [
   "./", "./index.html", "./manifest.webmanifest", "./firebase-config.js",
   "./assets/soma-mark.png", "./assets/soma-logo.jpg", "./assets/icon-192.png", "./assets/icon-512.png",
@@ -25,7 +25,7 @@ self.addEventListener("fetch", (e) => {
   if (url.origin === self.location.origin) {
     // App files: use the network when it answers, the saved copy when offline
     e.respondWith(
-      fetch(req).then((res) => {
+      fetch(req, { cache: "no-cache" }).then((res) => {
         if (res.ok) { const copy = res.clone(); caches.open(VERSION).then((c) => c.put(req, copy)); }
         return res;
       }).catch(() => caches.match(req, { ignoreSearch: true })

@@ -25,7 +25,7 @@ self.addEventListener("fetch", (e) => {
   if (url.origin === self.location.origin) {
     // App files: use the network when it answers, the saved copy when offline
     e.respondWith(
-      fetch(req).then((res) => {
+      fetch(req, { cache: "no-cache" }).then((res) => {
         if (res.ok) { const copy = res.clone(); caches.open(VERSION).then((c) => c.put(req, copy)); }
         return res;
       }).catch(() => caches.match(req, { ignoreSearch: true })
