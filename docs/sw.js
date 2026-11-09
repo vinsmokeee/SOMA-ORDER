@@ -1,5 +1,5 @@
 // Offline support: keeps the app itself on the phone. Orders are stored offline by Firestore.
-const VERSION = "soma-b87af0da3f";
+const VERSION = "soma-9a2a8fe7a1";
 const SHELL = [
   "./", "./index.html", "./manifest.webmanifest", "./firebase-config.js",
   "./assets/soma-mark.png", "./assets/soma-logo.jpg", "./assets/icon-192.png", "./assets/icon-512.png",
