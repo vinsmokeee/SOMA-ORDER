@@ -156,6 +156,8 @@ nav.tabs a.add-tab span.plus svg { width: 16px; height: 16px; stroke-width: 2.2;
 /* Order card */
 .order { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
 .order.is-late { border-color: var(--late); }
+.o-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.o-num { font-size: 15px; font-weight: 600; color: var(--muted); min-width: 1.4em; flex: none; }
 .o-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px 0 12px; }
 .uname {
   display: inline-flex; align-items: center; gap: 1px; min-width: 0; max-width: 100%;
@@ -663,6 +665,8 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
       body = days.map((d) => {
         const items = byDay.get(d).sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
         const allDay = orders.filter((o) => o.date === d);
+        // Serial number within the day, by when each order was added (stable under filters)
+        const serial = new Map([...allDay].sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt))).map((o, i) => [o.id, i + 1]));
         const toOrder = allDay.filter((o) => o.status === "paid").length;
         const late = allDay.filter(isLate).length;
         const waiting = allDay.filter((o) => o.status === "ordered").length - late;
@@ -685,7 +689,7 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
               <span class="day-txt"><h2>${esc(dayTitle(d))}${hint ? `<em>${hint}</em>` : ""}</h2>
               <span class="day-sum num">${allDay.length} order${allDay.length === 1 ? "" : "s"} · ${nu(total)}${status}</span></span>
             </button>${action}</div>
-          ${open ? `<div class="list">${items.map(card).join("")}</div>` : ""}</section>`;
+          ${open ? `<div class="list">${items.map((o) => card(o, serial.get(o.id))).join("")}</div>` : ""}</section>`;
       }).join("");
     }
     const searchVal = ui.q;
@@ -699,7 +703,7 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
     return "";
   }
 
-  function card(o) {
+  function card(o, n) {
     const open = ui.open.has(o.id);
     const idx = STEP_IDX[o.status] ?? 0;
     const steps = STEPS.map(([k, l], i) => `<button class="step ${i < idx ? "done" : ""} ${i === idx ? "cur done" : ""}" data-act="step" data-id="${o.id}" data-s="${k}" aria-pressed="${i === idx}">${l}</button>`).join("");
@@ -707,10 +711,11 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
     const tags = [statusTag(o), o.delivery ? `<span class="tag moved">New address</span>` : "", loss ? `<span class="tag loss">Loss</span>` : ""].join("");
     return `<article class="order s-${o.status} ${isLate(o) ? "is-late" : ""}">
       <div class="o-top">
+        <span class="o-left">${n ? `<span class="o-num num">${n}.</span>` : ""}
         <button class="uname" data-act="copyuser" data-id="${o.id}" aria-label="Copy TikTok username ${esc(handle(o.tiktok))}">
           <span class="u-at">@</span><span class="u-name">${esc(handle(o.tiktok))}</span>
           <span class="u-copy"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span class="u-lbl">Copy</span></span>
-        </button>
+        </button></span>
         <span class="o-price num">${nu(o.price)}</span>
       </div>
       <button class="o-main" data-act="toggle" data-id="${o.id}" aria-expanded="${open}">
