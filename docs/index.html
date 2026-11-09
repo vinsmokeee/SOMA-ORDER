@@ -42,6 +42,8 @@
   --day-fg: #f4f6f8;
   --day-muted: #a7b0bc;
   --day-panel: #e7eaee;
+  --day-pos: #7fdca6;
+  --day-neg: #ff9a8c;
   --f-ui: "Geist", "Helvetica Neue", "Segoe UI", system-ui, sans-serif;
   --f-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --r: 8px;
@@ -141,6 +143,11 @@ nav.tabs a.add-tab span.plus svg { width: 16px; height: 16px; stroke-width: 2.2;
 .day-head h2 { font: 600 16px/1.2 var(--f-ui); letter-spacing: -.015em; margin: 0; display: flex; align-items: center; gap: 8px; }
 .day-head h2 em { font: 500 10px var(--f-mono); font-style: normal; text-transform: uppercase; letter-spacing: .12em; color: var(--day-fg); background: rgba(255, 255, 255, .14); padding: 2px 6px; border-radius: 4px; }
 .day-sum { font-size: 12px; color: var(--day-muted); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.day-profit { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; margin-top: 2px; }
+.dp-k { font: 500 10px var(--f-mono); text-transform: uppercase; letter-spacing: .1em; color: var(--day-muted); }
+.day-profit b { font: 600 16px var(--f-mono); letter-spacing: -.02em; }
+.day-profit b.pos { color: var(--day-pos); } .day-profit b.neg { color: var(--day-neg); }
+.dp-none { font-size: 12px; color: var(--day-muted); }
 .ds { font: 500 10px var(--f-mono); text-transform: uppercase; letter-spacing: .06em; padding: 2px 6px; border-radius: 4px; }
 .ds.wait { background: var(--surface); color: var(--ink); }
 .ds.info { background: var(--gold-soft); color: var(--gold); }
@@ -334,7 +341,7 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
   .toast { animation: up .18s ease-out; }
   @keyframes up { from { opacity: 0; transform: translate(-50%, 8px); } }
 }
-@media (max-width: 420px) { .brand span { display: none; } }
+@media (max-width: 420px) { .brand span { display: none; } .uname:not(.copied) .u-lbl { display: none; } .u-copy { margin-left: 6px; padding: 4px 6px; } .o-left { gap: 6px; } }
 @media (max-width: 360px) { .two { grid-template-columns: 1fr; } .step { font-size: 11px; } }
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -673,6 +680,13 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
         const toDeliver = allDay.filter((o) => o.status === "arrived").length;
         const delivered = allDay.filter((o) => o.status === "delivered").length;
         const total = allDay.reduce((s, o) => s + (Number(o.price) || 0), 0);
+        // Day profit from orders that have a cost; say how many still need one
+        const costed = allDay.filter(hasCost);
+        const dayProfit = costed.reduce((s, o) => s + Number(o.price) - Number(o.cost), 0);
+        const noCost = allDay.length - costed.length;
+        const profitLine = !costed.length
+          ? `<span class="day-profit"><span class="dp-k">Profit</span><span class="dp-none">add costs to see it</span></span>`
+          : `<span class="day-profit"><span class="dp-k">Profit</span><b class="num ${dayProfit < 0 ? "neg" : "pos"}">${signedNu(dayProfit)}</b>${noCost ? `<span class="dp-none">${noCost} order${noCost === 1 ? "" : "s"} without cost</span>` : ""}</span>`;
         const open = forceOpen || (ui.days[d] ?? daysSince(d) === 0);
         const status = [
           toOrder ? `<span class="ds wait">${toOrder} to order</span>` : "",
@@ -687,7 +701,7 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
             <button class="day-toggle" data-act="day" data-day="${d}" aria-expanded="${open}" ${forceOpen ? "disabled" : ""}>
               <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
               <span class="day-txt"><h2>${esc(dayTitle(d))}${hint ? `<em>${hint}</em>` : ""}</h2>
-              <span class="day-sum num">${allDay.length} order${allDay.length === 1 ? "" : "s"} · ${nu(total)}${status}</span></span>
+              <span class="day-sum num">${allDay.length} order${allDay.length === 1 ? "" : "s"} · ${nu(total)}${status}</span>${profitLine}</span>
             </button>${action}</div>
           ${open ? `<div class="list">${items.map((o) => card(o, serial.get(o.id))).join("")}</div>` : ""}</section>`;
       }).join("");
