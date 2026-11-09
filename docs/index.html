@@ -143,7 +143,9 @@ nav.tabs a.add-tab span.plus svg { width: 16px; height: 16px; stroke-width: 2.2;
 .day-head h2 { font: 600 16px/1.2 var(--f-ui); letter-spacing: -.015em; margin: 0; display: flex; align-items: center; gap: 8px; }
 .day-head h2 em { font: 500 10px var(--f-mono); font-style: normal; text-transform: uppercase; letter-spacing: .12em; color: var(--day-fg); background: rgba(255, 255, 255, .14); padding: 2px 6px; border-radius: 4px; }
 .day-sum { font-size: 12px; color: var(--day-muted); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
-.day-profit { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 6px; margin-top: 2px; }
+.day-profit { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 18px; margin-top: 2px; }
+.dp-item { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.day-profit b.baht { color: var(--day-fg); }
 .dp-k { font: 500 10px var(--f-mono); text-transform: uppercase; letter-spacing: .1em; color: var(--day-muted); }
 .day-profit b { font: 600 13px var(--f-ui); font-variant-numeric: tabular-nums; letter-spacing: 0; white-space: nowrap; }
 .day-profit b.pos { color: var(--day-pos); } .day-profit b.neg { color: var(--day-neg); }
@@ -412,7 +414,7 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
   const dayTitle = (s) => {
     const [y, m, d] = s.split("-").map(Number);
     const mon = new Date(y, m - 1, d).toLocaleDateString("en-GB", { month: "short" });
-    return `Orders of ${pad(d)} ${mon}${y !== new Date().getFullYear() ? " " + y : ""}`;
+    return `${pad(d)} ${mon}${y !== new Date().getFullYear() ? " " + y : ""}`;
   };
   const dayHint = (s) => { const n = daysSince(s); return n === 0 ? "Today" : n === 1 ? "Yesterday" : ""; };
   const shortDay = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-GB", { day: "numeric", month: "short" }); };
@@ -684,9 +686,15 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
         const costed = allDay.filter(hasCost);
         const dayProfit = costed.reduce((s, o) => s + Number(o.price) - Number(o.cost), 0);
         const noCost = allDay.length - costed.length;
-        const profitLine = !costed.length
-          ? `<span class="day-profit"><span class="dp-k">Profit</span><span class="dp-none">add costs to see it</span></span>`
-          : `<span class="day-profit"><span class="dp-k">Profit</span><b class="${dayProfit < 0 ? "neg" : "pos"}">${signedNu(dayProfit)}</b>${noCost ? `<span class="dp-none">${noCost} order${noCost === 1 ? "" : "s"} without cost</span>` : ""}</span>`;
+        // Baht spent on this day's orders (those with a Baht cost), then the day's profit
+        const bahtUsed = allDay.reduce((s, o) => s + (hasBaht(o) ? Number(o.costBaht) : 0), 0);
+        const usedPart = bahtUsed
+          ? `<span class="dp-item"><span class="dp-k">Used</span><b class="baht">${baht(Math.round(bahtUsed * 100) / 100)}</b></span>`
+          : `<span class="dp-item"><span class="dp-k">Used</span><span class="dp-none">฿ –</span></span>`;
+        const profitPart = !costed.length
+          ? `<span class="dp-item"><span class="dp-k">Profit</span><span class="dp-none">add costs</span></span>`
+          : `<span class="dp-item"><span class="dp-k">Profit</span><b class="${dayProfit < 0 ? "neg" : "pos"}">${signedNu(dayProfit)}</b></span>`;
+        const profitLine = `<span class="day-profit">${usedPart}${profitPart}${costed.length && noCost ? `<span class="dp-none">${noCost} without cost</span>` : ""}</span>`;
         const open = forceOpen || (ui.days[d] ?? daysSince(d) === 0);
         const status = [
           toOrder ? `<span class="ds wait">${toOrder} to order</span>` : "",
