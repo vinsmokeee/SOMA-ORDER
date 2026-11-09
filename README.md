@@ -17,7 +17,7 @@ The whole app is `index.html` plus the SOMA logo in `assets/` (`soma-mark.png` f
   - Ordered parcels show "Day N of 8–10". Once more than 10 days have passed since ordering, they show **Late**.
   - Each order shows the TikTok username as a button at the top: one tap copies it (without the @) for TikTok search.
   - Tap an order to open it: **Copy** (name, phone, address and item for the package), **Change delivery**, buying cost, **Edit order**, **Delete**.
-- **Add**: TikTok username, name, number, address, item, price (Nu.), date (defaults to today), optional buying cost in Baht. Returning customers get a one-tap "Fill details". Saving shows an "Order saved" screen with **Add another order** and **See orders**.
+- **Add**: TikTok username, name, number, address, date (defaults to today) and one or more items, each with a price (Nu.) and an optional buying cost in Baht (**+ Add another item** for customers buying several things). Returning customers get a one-tap "Fill details". Saving shows an "Order saved" screen with **Add another order** and **See orders**.
 - **Report**: sets the Baht rate (฿1 = Nu. …, default 2.85). This month / Last month / All time show money received, buying cost, profit, orders at each step, losing orders and the top 5 customers.
 
 ## Baht costs
@@ -32,7 +32,8 @@ One document per order in the `orders` collection:
 |---|---|
 | `tiktok`, `name`, `phone`, `address` | original details as taken on TikTok (never overwritten by a delivery change) |
 | `delivery` | `null`, or `{name, phone, address, changedAt}` when the delivery details were changed |
-| `item`, `price` | price paid in Nu. |
+| `items` | `[{name, price, costBaht}]`, one entry per item the customer bought |
+| `item`, `price` | item names joined with commas, and the order total in Nu. (sum of item prices) |
 | `costBaht`, `rate`, `cost` | buying cost in Baht, the Nu.-per-Baht rate used, and the cost in Nu. (`costBaht × rate`, rounded); all `null` until entered |
 | `date` | order date `YYYY-MM-DD` (grouping key) |
 | `status` | `paid` / `ordered` / `arrived` / `delivered` |
