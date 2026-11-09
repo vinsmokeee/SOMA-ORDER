@@ -298,6 +298,25 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
 .rate-box .money-in input { width: 80px; }
 .rate-box .meta { flex-basis: 100%; }
 
+/* Items in the order form and on cards */
+.items { display: flex; flex-direction: column; gap: 10px; }
+.item-row { display: flex; flex-direction: column; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 10px; }
+.item-head { display: flex; justify-content: space-between; align-items: center; }
+.item-n { font: 500 11px var(--f-mono); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.it-del { border: 0; background: none; color: var(--late); font-size: 13px; font-weight: 500; padding: 2px 4px; }
+.item-row .it-name { border: 1px solid var(--line-strong); background: var(--surface); border-radius: 6px; padding: 10px 12px; width: 100%; font-size: 16px; }
+.item-row .it-name:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.item-nums { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.field .item-nums .money-in input { width: 100%; min-width: 0; font-size: 16px; border: 0; border-radius: 0; box-shadow: none; background: transparent; padding: 10px 10px 10px 0; }
+.add-item { align-self: flex-start; }
+.items-total { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px; }
+.it-sum { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-weight: 500; }
+.it-sum b { font: 600 16px var(--f-mono); }
+.items-total .hint { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
+.it-list { display: flex; flex-direction: column; gap: 2px; }
+.it-line { display: flex; justify-content: space-between; gap: 10px; }
+.it-line .num { font-size: 12px; white-space: nowrap; }
+
 /* Online cart sheet */
 .cart-list { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
 .cart-row { display: grid; grid-template-columns: 20px 1fr auto; gap: 6px 10px; align-items: center; padding: 10px 12px; border-top: 1px solid var(--line); }
@@ -430,6 +449,16 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
   // Parse a Baht cost field: "" -> null, bad -> undefined
   const readBaht = (v) => { v = String(v).trim(); if (v === "") return null; const n = Number(v); return isFinite(n) && n >= 0 ? n : undefined; };
   // Cost fields for an order from a Baht amount, locked to the rate in force when entered
+  // Items in an order. Older orders have one item stored as item/price/costBaht.
+  const orderItems = (o) => Array.isArray(o.items) && o.items.length
+    ? o.items : [{ name: o.item || "", price: o.price, costBaht: hasBaht(o) ? o.costBaht : null }];
+  const r2 = (n) => Math.round(n * 100) / 100;
+  // After a whole-order cost is set (cost box, cart), per-item costs of a multi-item order no longer apply
+  const syncItemCosts = (o) => {
+    if (!Array.isArray(o.items) || !o.items.length) return o;
+    if (o.items.length === 1) return { ...o, items: [{ ...o.items[0], costBaht: hasBaht(o) ? o.costBaht : null }] };
+    return { ...o, items: o.items.map((it) => ({ ...it, costBaht: null })) };
+  };
   const costFields = (b, r) => b === null ? { costBaht: null, rate: null, cost: null } : { costBaht: b, rate: r, cost: toNu(b, r) };
 
   let toastTimer;
@@ -725,6 +754,13 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
     return "";
   }
 
+  // One line per item when an order has several, with each item's price
+  function itemsHtml(o) {
+    const items = orderItems(o);
+    if (items.length < 2) return esc(o.item);
+    return `<span class="it-list">${items.map((it) => `<span class="it-line"><span>${esc(it.name)}</span><span class="num">${nu(it.price)}</span></span>`).join("")}</span>`;
+  }
+
   function card(o, n) {
     const open = ui.open.has(o.id);
     const idx = STEP_IDX[o.status] ?? 0;
@@ -742,7 +778,7 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
       </div>
       <button class="o-main" data-act="toggle" data-id="${o.id}" aria-expanded="${open}">
         <span class="o-who">${esc(ship(o).name)}</span>
-        <span class="o-item">${esc(o.item)}</span>
+        <span class="o-item">${itemsHtml(o)}</span>
         <span class="o-tags">${tags}</span>
       </button>
       <div class="steps">${steps}</div>
@@ -853,7 +889,7 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
       if (v === undefined) { toast("Enter the buying cost in Baht, like 70", true); return; }
       if ((o.costBaht ?? null) === v && (v !== null || !hasCost(o))) return;
       const f = costFields(v, rate());
-      saveOrder({ ...o, ...f }).then(() => toast(v === null ? "Cost cleared" : `Cost saved: ${baht(v)} = ${nu(f.cost)}`)).catch(() => {});
+      saveOrder(syncItemCosts({ ...o, ...f })).then(() => toast(v === null ? "Cost cleared" : `Cost saved: ${baht(v)} = ${nu(f.cost)}`)).catch(() => {});
     }
     if (el.id === "rate-in") {
       const r = Number(el.value);
@@ -868,7 +904,9 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
   // ---------- copy ----------
   function labelText(o) {
     const s = ship(o);
-    return `Name: ${s.name}\nPhone: ${s.phone}\nAddress: ${s.address}\nItem: ${o.item}`;
+    const items = orderItems(o);
+    const itemText = items.length > 1 ? "Items:\n" + items.map((it, i) => `${i + 1}. ${it.name}`).join("\n") : `Item: ${items[0].name}`;
+    return `Name: ${s.name}\nPhone: ${s.phone}\nAddress: ${s.address}\n${itemText}`;
   }
   // Copy text; if this phone blocks copying, show it selected so it can be copied by hand
   function copyText(text, title, onDone) {
@@ -1014,7 +1052,7 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
         // Keep the rate an existing cost was saved with when the amount didn't change
         if (c !== null) Object.assign(n, costFields(c, hasBaht(x.o) && x.o.costBaht === c ? x.o.rate : r));
         else if (hasBaht(x.o)) Object.assign(n, costFields(null, r)); // item box was cleared
-        saveOrder(n).catch(() => {});
+        saveOrder(c !== null || hasBaht(x.o) ? syncItemCosts(n) : n).catch(() => {});
       });
       toast(`${rows.length} order${rows.length === 1 ? "" : "s"} marked as ordered`);
     });
@@ -1031,7 +1069,7 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
 
   function renderForm() {
     const editing = ui.editId ? orders.find((o) => o.id === ui.editId) : null;
-    const o = editing || { tiktok: "", name: "", phone: "", address: "", item: "", price: "", date: today(), cost: null };
+    const o = editing || { tiktok: "", name: "", phone: "", address: "", item: "", price: "", date: today(), cost: null, items: [{ name: "", price: "", costBaht: null }] };
     const names = [...customers().values()].map((c) => `<option value="${esc(handle(c.tiktok))}"></option>`).join("");
     $("#view").innerHTML = `
       <h1 class="view-title">${editing ? "Edit order" : "New order"}</h1>
@@ -1044,13 +1082,13 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
         <div class="field"><label for="f-name">Customer name</label><input id="f-name" required value="${esc(o.name)}" autocomplete="off"></div>
         <div class="field"><label for="f-phone">Contact number</label><input id="f-phone" type="tel" inputmode="tel" required value="${esc(o.phone)}"></div>
         <div class="field"><label for="f-address">Address</label><textarea id="f-address" required>${esc(o.address)}</textarea></div>
-        <div class="field"><label for="f-item">Item</label><input id="f-item" required value="${esc(o.item)}" placeholder="e.g. Black ribbed knit top, size M"></div>
-        <div class="two">
-          <div class="field"><label for="f-price">Price paid (Nu.)</label><input id="f-price" class="num" type="number" inputmode="decimal" min="0" step="any" required value="${esc(o.price)}"></div>
-          <div class="field"><label for="f-date">Date</label><input id="f-date" type="date" required value="${esc(o.date)}"></div>
+        <div class="field"><label for="f-date">Date</label><input id="f-date" type="date" required value="${esc(o.date)}"></div>
+        <div class="field">
+          <span class="lbl-caps">Items</span>
+          <div class="items" id="items"></div>
+          <button type="button" class="btn small add-item" id="add-item">+ Add another item</button>
         </div>
-        <div class="field"><label for="f-cost">Buying cost in Baht (฿), optional</label><input id="f-cost" class="num" type="number" inputmode="decimal" min="0" step="any" value="${hasBaht(o) ? esc(o.costBaht) : ""}" placeholder="e.g. 70">
-          <span class="hint num" id="f-cost-hint"></span></div>
+        <div class="items-total" id="items-total"></div>
         <div class="row">
           <button class="btn primary" type="submit" style="flex:1;padding:12px">${editing ? "Save changes" : "Save order"}</button>
           ${editing ? `<a class="btn" href="#orders" style="text-decoration:none">Cancel</a>` : ""}
@@ -1067,41 +1105,96 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
       box.innerHTML = `<div class="suggest"><span>Returning customer: ${esc(s.name)}, ${esc(s.phone)}</span><button type="button" class="btn small" id="fill">Fill details</button></div>`;
       $("#fill").addEventListener("click", () => {
         $("#f-name").value = s.name; $("#f-phone").value = s.phone; $("#f-address").value = s.address;
-        box.innerHTML = ""; $("#f-item").focus();
+        box.innerHTML = ""; const first = $("#items .it-name"); if (first) first.focus();
       });
     };
     tk.addEventListener("input", suggest);
 
-    // Rate for this form: keep an edited order's locked rate unless its Baht amount changes
-    const formRate = (b) => (editing && hasBaht(editing) && b === editing.costBaht ? editing.rate : rate());
-    const costHint = () => {
-      const b = readBaht($("#f-cost").value);
-      const price = Number($("#f-price").value);
-      const hint = $("#f-cost-hint");
-      if (b === null) { hint.textContent = `You can add this later from the order. Rate: ฿1 = Nu. ${fmtRate(rate())}`; return; }
-      if (b === undefined) { hint.textContent = "Enter a number, like 70"; return; }
-      const r = formRate(b), nuCost = toNu(b, r);
-      let t = `${baht(b)} × ${fmtRate(r)} = ${nu(nuCost)}`;
-      if ($("#f-price").value.trim() !== "" && isFinite(price)) t += ` · profit ${signedNu(price - nuCost)}`;
-      hint.textContent = t;
+    // ----- items editor -----
+    let rowSeq = 0;
+    const itemsBox = $("#items");
+    const addRow = (it = { name: "", price: "", costBaht: null }) => {
+      const k = rowSeq++;
+      itemsBox.insertAdjacentHTML("beforeend", `<div class="item-row" data-k="${k}">
+          <div class="item-head"><span class="item-n"></span><button type="button" class="it-del" aria-label="Remove this item">Remove</button></div>
+          <input id="it-name-${k}" class="it-name" required value="${esc(it.name)}" placeholder="Item, e.g. House slipper, grey, 36" aria-label="Item name">
+          <div class="item-nums">
+            <div class="money-in"><span>Nu.</span><input id="it-price-${k}" class="it-price num" type="number" inputmode="decimal" min="0" step="any" required value="${esc(it.price ?? "")}" placeholder="price" aria-label="Price paid in Nu."></div>
+            <div class="money-in"><span>฿</span><input id="it-baht-${k}" class="it-baht num" type="number" inputmode="decimal" min="0" step="any" value="${it.costBaht ?? ""}" placeholder="cost" aria-label="Buying cost in Baht, optional"></div>
+          </div>
+        </div>`);
+      renumber();
     };
-    $("#f-cost").addEventListener("input", costHint);
-    $("#f-price").addEventListener("input", costHint);
-    costHint();
+    const renumber = () => {
+      const rows = [...itemsBox.querySelectorAll(".item-row")];
+      rows.forEach((r, i) => {
+        r.querySelector(".item-n").textContent = rows.length > 1 ? `Item ${i + 1}` : "Item";
+        r.querySelector(".it-del").hidden = rows.length < 2;
+      });
+      totals();
+    };
+    const readItems = () => [...itemsBox.querySelectorAll(".item-row")].map((r) => ({
+      name: r.querySelector(".it-name").value.trim(),
+      priceRaw: r.querySelector(".it-price").value.trim(),
+      price: Number(r.querySelector(".it-price").value),
+      costBaht: readBaht(r.querySelector(".it-baht").value),
+    }));
+    // Keep an edited order's locked rate unless its Baht amount changes
+    const formRate = (b) => (editing && hasBaht(editing) && b === editing.costBaht ? editing.rate : rate());
+    // Whole-order cost from the items: all items costed -> their sum; none -> null; some -> undefined
+    const itemsCost = (items) => {
+      const withCost = items.filter((it) => it.costBaht !== null && it.costBaht !== undefined);
+      if (!withCost.length) return null;
+      if (withCost.length < items.length) return undefined;
+      return r2(withCost.reduce((t, it) => t + it.costBaht, 0));
+    };
+    const totals = () => {
+      const items = readItems();
+      const box = $("#items-total");
+      if (!box) return;
+      const price = items.reduce((t, it) => t + (isFinite(it.price) ? it.price : 0), 0);
+      const bad = items.some((it) => it.costBaht === undefined);
+      const c = bad ? undefined : itemsCost(items);
+      const keepOld = editing && c === null && hasCost(editing);
+      let line = `<div class="it-sum"><span>${items.length > 1 ? `${items.length} items · total` : "Total"}</span><b class="num">${nu(price)}</b></div>`;
+      if (bad) line += `<p class="hint">Enter costs as numbers, like 70.</p>`;
+      else if (c === undefined) line += `<p class="hint">Enter the cost for every item, or leave all costs empty to add later.</p>`;
+      else if (c === null) line += `<p class="hint">${keepOld ? `Cost stays ${hasBaht(editing) ? baht(editing.costBaht) + " = " : ""}${nu(editing.cost)} · profit ${signedNu(price - editing.cost)}` : `Costs are optional. You can add them later. Rate: ฿1 = Nu. ${fmtRate(rate())}`}</p>`;
+      else { const r = formRate(c), nc = toNu(c, r); line += `<p class="hint num">Cost ${baht(c)} × ${fmtRate(r)} = ${nu(nc)} · profit ${signedNu(price - nc)}</p>`; }
+      box.innerHTML = line;
+    };
+    itemsBox.addEventListener("input", totals);
+    itemsBox.addEventListener("click", (e) => {
+      const del = e.target.closest(".it-del");
+      if (!del) return;
+      del.closest(".item-row").remove();
+      renumber();
+    });
+    $("#add-item").addEventListener("click", () => {
+      addRow();
+      const rows = itemsBox.querySelectorAll(".it-name");
+      rows[rows.length - 1].focus();
+    });
+    orderItems(o).forEach((it) => addRow(it));
 
     $("#order-form").addEventListener("submit", (e) => {
       e.preventDefault();
       if (!store) return toast("Still connecting. Try again in a moment.", true);
-      const price = Number($("#f-price").value);
-      const b = readBaht($("#f-cost").value);
-      if (!isFinite(price) || price < 0) return toast("Enter the price as a number, like 1200", true);
-      if (b === undefined) return toast("Enter the buying cost in Baht, like 70", true);
-      // An old order whose cost was typed in Nu. keeps it when the Baht box is left empty
-      const keepOldNu = editing && b === null && !hasBaht(editing) && hasCost(editing);
+      const items = readItems();
+      if (!items.length) return toast("Add at least one item.", true);
+      if (items.some((it) => it.priceRaw === "" || !isFinite(it.price) || it.price < 0)) return toast("Enter each item's price as a number, like 1200", true);
+      if (items.some((it) => it.costBaht === undefined)) return toast("Enter costs in Baht as numbers, like 70", true);
+      const c = itemsCost(items);
+      if (c === undefined) return toast("Enter the cost for every item, or leave all costs empty.", true);
+      const clean = items.map((it) => ({ name: it.name, price: it.price, costBaht: it.costBaht ?? null }));
+      const price = r2(clean.reduce((t, it) => t + it.price, 0));
+      // Costs left empty on an order that already has a cost (from the cart or the order's cost box) keep that cost
+      const keepOld = editing && c === null && hasCost(editing);
       const base = {
         tiktok: handle(tk.value), name: $("#f-name").value.trim(), phone: $("#f-phone").value.trim(),
-        address: $("#f-address").value.trim(), item: $("#f-item").value.trim(), price, date: $("#f-date").value,
-        ...(keepOldNu ? {} : costFields(b, formRate(b))),
+        address: $("#f-address").value.trim(), date: $("#f-date").value,
+        items: clean, item: clean.map((it) => it.name).join(", "), price,
+        ...(keepOld ? {} : costFields(c, formRate(c))),
       };
       if (editing) {
         saveOrder({ ...editing, ...base }).then(() => toast("Order updated")).catch(() => {});
@@ -1124,7 +1217,7 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
         <h1 class="view-title">Order saved</h1>
         <div class="saved-card">
           <div class="o-who">@${esc(o.tiktok)} <span>· ${esc(o.name)}</span></div>
-          <div class="o-item">${esc(o.item)}</div>
+          <div class="o-item">${itemsHtml(o)}</div>
           <div class="saved-row num"><span>${esc(fmtDay(o.date))}</span><b>${nu(o.price)}</b></div>
           ${hasCost(o) ? `<div class="meta num">Cost ${baht(o.costBaht)} = ${nu(o.cost)} · profit ${signedNu(o.price - o.cost)}</div>` : ""}
         </div>
