@@ -454,10 +454,24 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
     ? o.items : [{ name: o.item || "", price: o.price, costBaht: hasBaht(o) ? o.costBaht : null }];
   const r2 = (n) => Math.round(n * 100) / 100;
   // After a whole-order cost is set (cost box, cart), per-item costs of a multi-item order no longer apply
+  // Keep per-item Baht costs in step with the order's total cost.
+  // Same total: items untouched. New total: items that all had a cost are scaled to it,
+  // so the breakdown is never thrown away. Items are only emptied when the total is cleared.
   const syncItemCosts = (o) => {
     if (!Array.isArray(o.items) || !o.items.length) return o;
-    if (o.items.length === 1) return { ...o, items: [{ ...o.items[0], costBaht: hasBaht(o) ? o.costBaht : null }] };
-    return { ...o, items: o.items.map((it) => ({ ...it, costBaht: null })) };
+    const total = hasBaht(o) ? Number(o.costBaht) : null;
+    if (o.items.length === 1) return { ...o, items: [{ ...o.items[0], costBaht: total }] };
+    const costs = o.items.map((it) => (it.costBaht === null || it.costBaht === undefined || it.costBaht === "" ? null : Number(it.costBaht)));
+    const have = costs.every((c) => c !== null);
+    const sum = have ? r2(costs.reduce((t, c) => t + c, 0)) : null;
+    if (total === null) return { ...o, items: o.items.map((it) => ({ ...it, costBaht: null })) };
+    if (have && sum === total) return o;
+    if (have && sum > 0) {
+      const scaled = costs.map((c) => r2((c * total) / sum));
+      scaled[scaled.length - 1] = r2(total - scaled.slice(0, -1).reduce((t, c) => t + c, 0));
+      return { ...o, items: o.items.map((it, i) => ({ ...it, costBaht: scaled[i] })) };
+    }
+    return o; // items had no breakdown: the total is kept on the order
   };
   const costFields = (b, r) => b === null ? { costBaht: null, rate: null, cost: null } : { costBaht: b, rate: r, cost: toNu(b, r) };
 
@@ -1159,7 +1173,9 @@ section.rep h2 { font: 500 11px var(--f-mono); text-transform: uppercase; letter
       let line = `<div class="it-sum"><span>${items.length > 1 ? `${items.length} items · total` : "Total"}</span><b class="num">${nu(price)}</b></div>`;
       if (bad) line += `<p class="hint">Enter costs as numbers, like 70.</p>`;
       else if (c === undefined) line += `<p class="hint">Enter the cost for every item, or leave all costs empty to add later.</p>`;
-      else if (c === null) line += `<p class="hint">${keepOld ? `Cost stays ${hasBaht(editing) ? baht(editing.costBaht) + " = " : ""}${nu(editing.cost)} · profit ${signedNu(price - editing.cost)}` : `Costs are optional. You can add them later. Rate: ฿1 = Nu. ${fmtRate(rate())}`}</p>`;
+      else if (c === null) line += keepOld
+        ? `<div class="it-sum"><span>Buying cost (whole order)</span><b class="num">${hasBaht(editing) ? baht(editing.costBaht) : nu(editing.cost)}</b></div><p class="hint num">${hasBaht(editing) ? `${baht(editing.costBaht)} × ${fmtRate(editing.rate)} = ` : ""}${nu(editing.cost)} · profit ${signedNu(price - editing.cost)}. This cost was entered for the whole order, so the item ฿ boxes are empty. It stays as it is unless you fill in every item.</p>`
+        : `<p class="hint">Costs are optional. You can add them later. Rate: ฿1 = Nu. ${fmtRate(rate())}</p>`;
       else { const r = formRate(c), nc = toNu(c, r); line += `<p class="hint num">Cost ${baht(c)} × ${fmtRate(r)} = ${nu(nc)} · profit ${signedNu(price - nc)}</p>`; }
       box.innerHTML = line;
     };
